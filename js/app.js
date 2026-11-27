@@ -1,6 +1,7 @@
 // Crafting page: rank crafts for the trip you're willing to make (left), work out one item in detail (right).
 import * as C from './calc.js';
 import * as M from './market.js';
+import * as P from './profile.js';
 
 /* ---------- helpers ---------- */
 const $ = id => document.getElementById(id);
@@ -54,7 +55,7 @@ function loadSettings() {
   if (!Array.isArray(s.enchants) || !s.enchants.length) s.enchants = DEFAULTS.enchants;
   return s;
 }
-const save = debounce(() => { try { localStorage.setItem(STORE, JSON.stringify(S)); } catch { /* ignore */ } }, 300);
+const save = debounce(() => { try { localStorage.setItem(STORE, JSON.stringify(S)); } catch { /* ignore */ } P.syncActive(S); }, 300);
 
 // Settings in the shape calc.js expects
 function calcS(extra = {}) {
@@ -108,9 +109,20 @@ async function boot() {
   for (const g of D.groups) for (const c of g.cats) catName[c.key] = c.name;
   $('dataInfo').textContent = `${D.items.length.toLocaleString('en-US')} recipes, ${D.generated}`;
   S = loadSettings();
+  let loadedFromLink = false;
+  const incoming = P.takeProfileFromUrl();
+  if (incoming && (!P.linkWouldReplace(incoming, S) || confirm(`Replace the levels saved in this browser${incoming.char ? ' for ' + incoming.char : ''} with the ones from this link?`))) {
+    P.applyLinkedProfile(incoming, S);
+    save();
+    loadedFromLink = true;
+  }
   MK = M.loadMarket(S.server);
   wire();
   writeControls();
+  if (loadedFromLink) {
+    document.querySelector('details.more').open = true;
+    $('profileMsg').textContent = `Loaded ${P.loadChars().active ? P.loadChars().active + '\u2019s' : 'your'} levels and focus settings from the link.`;
+  }
   recompute();
   fetchPrices(false);
 }
@@ -121,6 +133,16 @@ function setStatus(text, kind) { const el = $('status'); el.textContent = text; 
 const opt = (v, t) => `<option value="${esc(v)}">${esc(t)}</option>`;
 function wire() {
   $('server').innerHTML = Object.entries(M.SERVERS).map(([k, v]) => opt(k, v.name)).join('');
+  $('char').innerHTML = P.charOptions();
+  $('char').addEventListener('change', e => {
+    const changed = P.onCharPick(e.target.value, S);
+    $('char').innerHTML = P.charOptions();
+    if (!changed) return;
+    try { localStorage.setItem(STORE, JSON.stringify(S)); } catch { /* ignore */ }
+    if (loading) loading.abort();
+    MK = M.loadMarket(S.server);
+    writeControls(); recompute(); fetchPrices(false);
+  });
   let cat = opt('all', 'All categories');
   for (const g of D.groups) cat += `<optgroup label="${esc(g.name)}">${opt('g:' + g.key, 'All ' + g.name.toLowerCase())}${g.cats.map(c => opt(c.key, c.name)).join('')}</optgroup>`;
   $('cat').innerHTML = cat;
@@ -175,6 +197,14 @@ function wire() {
       st.textContent = `Loaded ${r.kind} for ${r.count} items.`; $('paste').value = '';
       recompute();
     } catch { st.textContent = 'That doesn’t look like data from one of the links. Copy the whole page and try again.'; }
+  });
+  $('copyProfile').addEventListener('click', async () => {
+    const link = P.profileLink(S), box = $('profileLinkBox');
+    box.value = link;
+    const copied = await P.copyText(link);
+    box.hidden = copied;
+    if (!copied) box.select();
+    $('profileMsg').textContent = copied ? 'Link copied. Open it on your other device.' : 'Copy this link and open it on your other device.';
   });
   $('clearCache').addEventListener('click', () => { M.clearMarket(S.server); MK = M.emptyMarket(); recompute(); setStatus('Saved prices cleared.', ''); });
 }

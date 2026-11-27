@@ -40,6 +40,7 @@ button,input,select{font:inherit;color:inherit}
 .bar-right{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
 .bar select{background:rgba(255,255,255,.06);color:var(--top-ink);border:1px solid var(--top-line);border-radius:6px;padding:6px 8px;min-height:36px}
 .bar select option{color:#111827;background:#fff}
+#char{max-width:190px;font-weight:600}
 .bar .btn{border-color:#7cc4e4;color:#cfeaf6;background:transparent}
 .status{color:var(--top-muted);font-size:13px} .status.err{color:#ffb4a8} .status.ok{color:#9fe0c2}
 .progress{width:120px;height:4px;background:var(--top-line);border-radius:4px;overflow:hidden}
@@ -65,7 +66,7 @@ button,input,select{font:inherit;color:inherit}
 .seg button + button{border-left:1px solid var(--line2)}
 .seg button[aria-pressed="true"]{background:var(--top);color:#fff}
 .seg button:hover:not([aria-pressed="true"]){background:var(--row)}
-select,input[type=number],input[type=search]{background:var(--panel);color:var(--text);border:1px solid var(--ctl);border-radius:6px;padding:7px 10px;min-height:38px}
+select,input[type=number],input[type=search],input[type=text]{background:var(--panel);color:var(--text);border:1px solid var(--ctl);border-radius:6px;padding:7px 10px;min-height:38px}
 input[type=number]{width:96px}
 input[type=search]{min-width:0;width:100%}
 input[type=checkbox]{width:18px;height:18px;accent-color:var(--accent);margin:0}

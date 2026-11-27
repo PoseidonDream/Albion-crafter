@@ -1,6 +1,7 @@
 // Refining planner: one resource at a time, every tier and enchantment, with live prices.
 import * as C from './calc.js';
 import * as M from './market.js';
+import * as P from './profile.js';
 
 /* ---------- helpers ---------- */
 const $ = id => document.getElementById(id);
@@ -41,6 +42,7 @@ function saveShared() {
   const all = read(SHARED);
   for (const k of ['server', 'premium', 'focus', 'levels', 'fce', 'overrides']) all[k] = shared[k];
   write(SHARED, all);
+  P.syncActive(shared);
 }
 const saveOwn = debounce(() => write(OWN, own), 200);
 
@@ -115,6 +117,15 @@ async function fetchPrices(force) {
 /* ---------- events ---------- */
 function wire() {
   $('server').innerHTML = Object.entries(M.SERVERS).map(([k, v]) => `<option value="${k}">${esc(v.name)}</option>`).join('');
+  $('char').innerHTML = P.charOptions();
+  $('char').addEventListener('change', e => {
+    const changed = P.onCharPick(e.target.value, shared);
+    $('char').innerHTML = P.charOptions();
+    if (!changed) return;
+    saveShared();
+    if (loading) loading.abort();
+    MK = M.loadMarket(shared.server); render(); fetchPrices(false);
+  });
   $('server').addEventListener('change', e => {
     shared.server = e.target.value; saveShared();
     MK = M.loadMarket(shared.server); render(); fetchPrices(false);
