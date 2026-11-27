@@ -1,0 +1,198 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Albion Crafting Profits</title>
+<meta name="description" content="Profit for every craft and refine in Albion Online, with and without focus, using live prices from the Albion Online Data Project.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%238b6a10'/%3E%3Cpath d='M9 23l9-9m-4-4l8 8m-12 5l-2 2m14-14l3-3' stroke='%23fff' stroke-width='2.6' stroke-linecap='round'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<header class="top">
+  <div class="top-in">
+    <div class="brand">
+      <h1>Albion Crafting Profits</h1>
+      <p class="sub">Every craft and refine, priced live, with and without focus</p>
+    </div>
+    <div class="top-actions">
+      <label class="server"><span>Server</span>
+        <select id="server" aria-label="Game server"></select>
+      </label>
+      <button type="button" class="btn" id="refresh">Update prices</button>
+    </div>
+  </div>
+  <div class="status-row" role="status" aria-live="polite">
+    <div class="progress" id="progress" hidden><span id="progressBar"></span></div>
+    <span id="status" class="status">Loading item data…</span>
+  </div>
+</header>
+
+<div class="wrap">
+  <section class="card filters" aria-label="What to show">
+    <div class="filter-row">
+      <div class="field grow">
+        <label for="cat">Category</label>
+        <select id="cat"></select>
+      </div>
+      <div class="field grow">
+        <label for="q">Search</label>
+        <input type="search" id="q" placeholder="Item name, e.g. bag, claymore, healing" autocomplete="off">
+      </div>
+    </div>
+    <div class="filter-row">
+      <div class="field">
+        <span class="lbl" id="tiersLbl">Tiers</span>
+        <div class="chips" id="tiers" role="group" aria-labelledby="tiersLbl"></div>
+      </div>
+      <div class="field">
+        <span class="lbl" id="enchLbl">Enchantment</span>
+        <div class="chips" id="enchants" role="group" aria-labelledby="enchLbl"></div>
+      </div>
+    </div>
+  </section>
+
+  <div class="layout">
+    <aside class="card settings" aria-label="Your setup">
+      <details open class="group" id="g-cities">
+        <summary>Cities</summary>
+        <div class="field">
+          <label for="craftCity">Craft in</label>
+          <select id="craftCity" data-set="craftCity"></select>
+          <p class="hint" id="craftHint"></p>
+        </div>
+        <div class="field" id="f-custom" hidden>
+          <label for="customBonus">Production bonus at your hideout or island, %</label>
+          <input type="number" id="customBonus" data-set="customBonus" data-num min="0" max="200" step="1" inputmode="decimal">
+        </div>
+        <div class="field">
+          <label for="buyCity">Buy resources in</label>
+          <select id="buyCity" data-set="buyCity"></select>
+        </div>
+        <div class="field">
+          <label for="sellCity">Sell in</label>
+          <select id="sellCity" data-set="sellCity"></select>
+          <p class="hint">Transport between cities isn't counted.</p>
+        </div>
+      </details>
+
+      <details open class="group">
+        <summary>Prices and taxes</summary>
+        <div class="field">
+          <span class="lbl" id="sellBasisLbl">Sell at</span>
+          <div class="seg seg3" role="radiogroup" aria-labelledby="sellBasisLbl">
+            <label><input type="radio" name="sellBasis" value="listing" data-set="sellBasis"><span>Sell order</span></label>
+            <label><input type="radio" name="sellBasis" value="buyorder" data-set="sellBasis"><span>Instant sell</span></label>
+            <label><input type="radio" name="sellBasis" value="average" data-set="sellBasis"><span>7-day avg</span></label>
+          </div>
+          <p class="hint">Sell order: you list at the lowest current listing and pay the 2.5% setup fee. Instant sell: you fill the top buy order. 7-day average: what it actually sold for.</p>
+        </div>
+        <div class="field">
+          <span class="lbl" id="buyModeLbl">Buy resources with</span>
+          <div class="seg" role="radiogroup" aria-labelledby="buyModeLbl">
+            <label><input type="radio" name="buyMode" value="instant" data-set="buyMode"><span>Instant buy</span></label>
+            <label><input type="radio" name="buyMode" value="order" data-set="buyMode"><span>Buy orders</span></label>
+          </div>
+        </div>
+        <label class="check"><input type="checkbox" id="premium" data-set="premium"><span>Premium<small>Market tax 4% with Premium, 8% without.</small></span></label>
+        <div class="field">
+          <label for="maxAge">Ignore prices older than</label>
+          <select id="maxAge" data-set="maxAge" data-num>
+            <option value="6">6 hours</option><option value="12">12 hours</option><option value="24">1 day</option>
+            <option value="48">2 days</option><option value="168">1 week</option><option value="0">Use any age</option>
+          </select>
+        </div>
+      </details>
+
+      <details open class="group">
+        <summary>Station, bonuses and focus</summary>
+        <div class="field">
+          <label for="stationFee">Station fee, silver per 100 nutrition</label>
+          <input type="number" id="stationFee" data-set="stationFee" data-num min="0" step="10" inputmode="numeric">
+          <p class="hint">Shown on the crafting station. 0 if you don't know it.</p>
+        </div>
+        <div class="field">
+          <label for="daily">Daily production bonus</label>
+          <select id="daily" data-set="daily" data-num><option value="0">None</option><option value="10">+10%</option><option value="20">+20%</option></select>
+          <p class="hint">Applies to everything listed, so set it when you're looking at today's bonus category.</p>
+        </div>
+        <div class="field">
+          <label for="focus">Focus points you have</label>
+          <input type="number" id="focus" data-set="focus" data-num min="0" step="1000" inputmode="numeric">
+        </div>
+        <p class="hint" id="levelsNote"></p>
+        <button type="button" class="btn ghost small" id="clearLevels" hidden>Clear all levels</button>
+      </details>
+    </aside>
+
+    <main class="results">
+      <section class="tiles" id="tiles" aria-label="Summary"></section>
+      <section class="card list-card" aria-labelledby="list-h">
+        <div class="list-head">
+          <div class="list-title">
+            <h2 id="list-h">What to craft</h2>
+            <p class="hint" id="listSub"></p>
+          </div>
+          <div class="list-tools">
+            <div class="seg seg4" role="radiogroup" aria-label="Show">
+              <label><input type="radio" name="show" value="all"><span>All</span></label>
+              <label><input type="radio" name="show" value="profit"><span>Profit</span></label>
+              <label><input type="radio" name="show" value="focus"><span>Focus only</span></label>
+              <label><input type="radio" name="show" value="loss"><span>Loss</span></label>
+            </div>
+            <div class="field sort-field">
+              <label for="sort">Sort by</label>
+              <select id="sort">
+                <option value="profitN">Profit, no focus</option>
+                <option value="profitF">Profit, with focus</option>
+                <option value="spf">Silver per focus</option>
+                <option value="marginN">Margin, no focus</option>
+                <option value="marginF">Margin, with focus</option>
+                <option value="perDay">Sold per day</option>
+                <option value="price">Sell price</option>
+                <option value="name">Name</option>
+              </select>
+            </div>
+          </div>
+        </div>
+        <label class="check"><input type="checkbox" id="unpriced"><span>Show items with missing prices</span></label>
+        <div id="list" class="list"></div>
+        <div class="more-row"><button type="button" class="btn ghost" id="more" hidden>Show more</button></div>
+      </section>
+    </main>
+  </div>
+
+  <details class="card" id="manual">
+    <summary>Prices not loading?</summary>
+    <div class="manual-body">
+      <p class="hint">Prices load straight from the Albion Online Data Project in your browser. If that's blocked (some ad-blockers, school or work networks), open a link below, copy everything on the page, paste it here and press Load. One link at a time.</p>
+      <div class="links" id="links"></div>
+      <textarea id="paste" rows="3" placeholder='[{"item_id":"T4_BAG","city":"Caerleon", ...}]'></textarea>
+      <div class="btns">
+        <button type="button" class="btn" id="loadPaste">Load pasted data</button>
+        <button type="button" class="btn ghost" id="clearCache">Forget saved prices</button>
+        <span class="status" id="pasteStatus" role="status"></span>
+      </div>
+    </div>
+  </details>
+
+  <section class="notes" aria-label="How this is worked out">
+    <h2>How it's worked out</h2>
+    <p><b>Recipes</b> come from the game's own item files (ao-bin-dumps), <span id="dataInfo"></span> Every tier and enchantment is included.</p>
+    <p><b>Return rate</b> is 1 − 1 ÷ (1 + production bonus). Cities give 18% (refining in rest cities 15%), the city's specialty adds 15% for crafting or 40% for refining, focus adds 59%, and the daily bonus 10% or 20%. Artifacts, hearts, Avalonian energy, capes and other special resources are never returned.</p>
+    <p><b>Focus cost</b> is the base cost × 0.5^(efficiency ÷ 10,000). Efficiency is 30 per mastery level, 250 per level of the item's own specialization, and 30 (18 for potions) per level of every specialization in the same mastery. Open an item to enter your levels, or type the focus cost you see in game to match it exactly.</p>
+    <p><b>Profit per craft</b> = what you get after tax − resources you keep using after returns − station fee. Market tax is 4% with Premium or 8% without; placing a sell or buy order adds 2.5%. Silver per focus is the profit of one focused craft divided by its focus cost.</p>
+    <p><b>Prices</b> come from the <a href="https://www.albion-online-data.com/" target="_blank" rel="noopener">Albion Online Data Project</a>, gathered by players running its client, for normal-quality items. Some prices are hours old and some items have none. Sold per day is the last 7 days ÷ 7. Check in game before a big buy.</p>
+  </section>
+</div>
+
+<dialog id="detail" aria-labelledby="d-title">
+  <div id="detailBody"></div>
+</dialog>
+
+<script type="module" src="js/app.js"></script>
+</body>
+</html>

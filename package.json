@@ -1,0 +1,11 @@
+{
+  "name": "albion-crafter",
+  "private": true,
+  "description": "Albion Online crafting profit calculator with live market prices",
+  "type": "module",
+  "scripts": {
+    "build-data": "node tools/build-data.mjs",
+    "test": "node --test tools/test-calc.mjs",
+    "serve": "python3 -m http.server 8080"
+  }
+}
