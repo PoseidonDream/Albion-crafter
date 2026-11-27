@@ -31,9 +31,10 @@ and how many sell a day. Each item is crafted in its bonus city unless you pick 
   in the craft city. Below it, the same trip with fewer or more stops.
 - **Buy everything in one city**: what all the materials cost if you buy them in a single market, for every city,
   with the profit that gives and which cities are missing a material. Click a city to plan the trip with it.
-- **Carry it: which mount**: how much the materials weigh and the cheapest mount that carries them in one trip, plus the
-  mount with the least silver per kg (the Transport Mammoth carries 22,520 kg but costs the most; a Transport Ox or a
-  Winter Bear is often enough). Every hauling mount is listed with its carry weight, cheapest price and trips needed.
+- **Carry it: which mount**: how much the materials weigh and the cheapest mount that carries them in one trip, plus
+  the Elder's Transport Ox (T8, 3,200 kg) with its price and the trips it needs, for comparison (the Transport Mammoth
+  carries 22,520 kg but costs the most). Every hauling mount is listed with its carry weight, cheapest price, silver per
+  kg and trips needed.
   Type another weight to plan a bigger haul.
 - **Prices in every city**: for each material, its **Buy now** price (cheapest seller) and **Buy order** price
   (highest bid); for the item, its **Sell order**, **Sell now** and 7-day **Sold for** prices, and for both, how many
