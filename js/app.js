@@ -1,6 +1,7 @@
 // Crafting page: rank crafts for the trip you're willing to make (left), work out one item in detail (right).
 import * as C from './calc.js';
 import * as M from './market.js';
+import * as P from './profile.js';
 
 /* ---------- helpers ---------- */
 const $ = id => document.getElementById(id);
@@ -54,7 +55,12 @@ function loadSettings() {
   if (!Array.isArray(s.enchants) || !s.enchants.length) s.enchants = DEFAULTS.enchants;
   return s;
 }
-const save = debounce(() => { try { localStorage.setItem(STORE, JSON.stringify(S)); } catch { /* ignore */ } }, 300);
+const save = debounce(() => {
+  let ok = true;
+  try { localStorage.setItem(STORE, JSON.stringify(S)); } catch { ok = false; }
+  P.syncActive(S);
+  P.flashSaved(ok);
+}, 300);
 
 // Settings in the shape calc.js expects
 function calcS(extra = {}) {
@@ -121,6 +127,16 @@ function setStatus(text, kind) { const el = $('status'); el.textContent = text; 
 const opt = (v, t) => `<option value="${esc(v)}">${esc(t)}</option>`;
 function wire() {
   $('server').innerHTML = Object.entries(M.SERVERS).map(([k, v]) => opt(k, v.name)).join('');
+  $('char').innerHTML = P.charOptions();
+  $('char').addEventListener('change', e => {
+    const changed = P.onCharPick(e.target.value, S);
+    $('char').innerHTML = P.charOptions();
+    if (!changed) return;
+    try { localStorage.setItem(STORE, JSON.stringify(S)); } catch { /* ignore */ }
+    if (loading) loading.abort();
+    MK = M.loadMarket(S.server);
+    writeControls(); recompute(); fetchPrices(false);
+  });
   let cat = opt('all', 'All categories');
   for (const g of D.groups) cat += `<optgroup label="${esc(g.name)}">${opt('g:' + g.key, 'All ' + g.name.toLowerCase())}${g.cats.map(c => opt(c.key, c.name)).join('')}</optgroup>`;
   $('cat').innerHTML = cat;
