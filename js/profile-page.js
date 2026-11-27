@@ -1,7 +1,7 @@
 // "Your levels": every mastery and specialization on one page, saved in the browser.
 import * as C from './calc.js';
 import * as P from './profile.js';
-import * as L from './levels.js';
+import * as L from './levels.js?v=2'; // ?v: load the new copy even if an old one is cached
 
 const $ = id => document.getElementById(id);
 const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -59,17 +59,36 @@ async function boot() {
   render();
 }
 
-// profile.html#char=Name&set=line.spec:level,… fills those levels in (after asking).
+// profile.html#char=Name&set=line.spec:level,… offers to fill those levels in. The question is shown
+// on the page (not a browser dialog, which Chrome drops when the tab isn't in front), and the link
+// stays in the address bar until it's answered.
+let pending = null;
+const clearHash = () => history.replaceState(null, '', location.pathname + location.search);
+function showLinkNote(text, ask) {
+  $('linkMsg').textContent = text;
+  $('linkBtns').hidden = !ask;
+  $('linkNote').hidden = false;
+  if (ask) $('linkNote').scrollIntoView({ block: 'nearest' });
+}
+const linkWho = link => link.name || P.loadChars().active || 'this browser';
+const linkNames = link => Object.keys(link.levels).map(l => D.lines[l].name).join(', ');
+
 function takeLink() {
   if (!/(^#|&)set=/.test(location.hash)) return;
   const link = L.parseLevelHash(D, location.hash);
-  history.replaceState(null, '', location.pathname + location.search);
-  const note = $('linkNote');
-  if (!link) { note.textContent = 'That link has no levels this site knows.'; note.hidden = false; return; }
-  const name = P.validName(link.name) ? link.name : '';
-  const who = name || P.loadChars().active || 'this browser';
-  const lines = Object.keys(link.levels), names = lines.map(l => D.lines[l].name);
-  if (!confirm(`Fill in ${link.count} levels for ${who}?\n\n${names.map(n => '• ' + n).join('\n')}\n\nOnly these masteries change. Anything else you entered stays.`)) return;
+  if (!link) { pending = null; clearHash(); showLinkNote('That link has no levels this site knows.', false); return; }
+  pending = { ...link, name: P.validName(link.name) ? link.name : '' };
+  showLinkNote(`This link has ${link.count} levels for ${linkWho(pending)}: ${linkNames(pending)}. Fill them in? Only these masteries change; anything else you entered stays.`, true);
+}
+
+function declineLink() { pending = null; clearHash(); $('linkNote').hidden = true; }
+
+function acceptLink() {
+  const link = pending;
+  if (!link) return;
+  pending = null;
+  clearHash();
+  const name = link.name, who = linkWho(link), lines = Object.keys(link.levels);
   if (name) {
     const c = P.loadChars();
     if (!c.chars[name]) P.addChar(name, S);
@@ -80,8 +99,7 @@ function takeLink() {
   $('char').innerHTML = P.charOptions();
   store();
   render();
-  note.textContent = `✓ Filled in ${link.count} levels for ${who}: ${names.join(', ')}. They're saved in this browser; check them below.`;
-  note.hidden = false;
+  showLinkNote(`✓ Filled in ${link.count} levels for ${who}: ${linkNames(link)}. They're saved in this browser; check them below.`, false);
 }
 function firstCat(line) { const it = D.items.find(i => i.l === line); return it ? it.c : ''; }
 
@@ -134,7 +152,9 @@ function wire() {
     const d = e.target;
     if (d.matches && d.matches('details[data-group]')) { if (d.open) open.add(d.dataset.group); else open.delete(d.dataset.group); }
   }, true);
-  addEventListener('hashchange', () => { takeLink(); render(); });
+  addEventListener('hashchange', takeLink);
+  $('linkYes').addEventListener('click', acceptLink);
+  $('linkNo').addEventListener('click', declineLink);
   document.querySelectorAll('[data-done]').forEach(a => a.addEventListener('click', () => { try { localStorage.setItem(ONBOARD, '1'); } catch { /* ignore */ } }));
 }
 
