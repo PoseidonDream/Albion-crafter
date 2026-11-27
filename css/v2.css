@@ -274,10 +274,9 @@ details.help dd{margin:0;color:var(--soft)}
 .mkt .pc{display:flex;align-items:center;justify-content:flex-end;min-height:36px}
 
 /* sold per day row in the price tables */
-.mkt .vol{cursor:default;background:var(--panel2);border-style:dotted;font-weight:500}
-.mkt .vol.best{background:var(--go-bg);color:var(--go-fg);border-color:transparent;font-weight:600}
-.mkt .pc.vol{color:var(--muted)}
-.mkt .pc.vol.best{color:var(--go-fg)}
+.mkt .vol{cursor:default;border:1px solid transparent;background:var(--panel2);color:var(--muted);font-weight:500}
+.mkt .vol.best{background:var(--go-bg);color:var(--go-fg);font-weight:600}
+.mkt .vol.empty{background:transparent;border-color:transparent}
 
 /* buy everything in one city; mounts */
 table.onecity td small,table.mounts td small{display:block;font-family:Inter,system-ui,sans-serif;font-size:11.5px;font-weight:400;white-space:normal}
