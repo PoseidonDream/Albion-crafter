@@ -14,23 +14,6 @@ with profit per craft, margin, silver per focus point, and how many sell per day
 Prices load **live from the [Albion Online Data Project](https://www.albion-online-data.com/)** in your browser,
 for the Americas, Europe or Asia server. You don't need to paste anything.
 
-## Open the site
-
-The site is plain HTML, CSS and JavaScript with no build step, so GitHub Pages can host it as is:
-
-1. In this repository on GitHub, go to **Settings → Pages**.
-2. Under **Build and deployment**, set **Source** to **Deploy from a branch**.
-3. Pick the branch that holds this code and the **/ (root)** folder, then **Save**.
-4. After a minute the site is live at https://poseidondream.github.io/Albion-crafter/.
-
-To run it on your own computer instead, serve the folder (opening `index.html` directly won't load the data):
-
-```bash
-python3 -m http.server 8080
-```
-
-Then open http://localhost:8080.
-
 ## Using it
 
 The crafting page has two halves.
@@ -97,7 +80,18 @@ The city bonuses and recipes come straight from the game's data files
 ([ao-bin-dumps](https://github.com/ao-data/ao-bin-dumps)). The focus efficiency values per level aren't in those files;
 if your in-game focus cost differs, use the "Focus per craft shown in game" box in the item view.
 
-## Files
+## For developers
+
+The site is plain HTML, CSS and JavaScript with no build step. To run it locally, serve the folder
+(opening `index.html` directly won't load the data):
+
+```bash
+python3 -m http.server 8080
+```
+
+Then open http://localhost:8080.
+
+### Files
 
 ```
 index.html            crafting page
@@ -112,7 +106,7 @@ tools/build-data.mjs  rebuilds data/items.json from the game's data files
 tools/test-calc.mjs   tests for the math
 ```
 
-## After a game patch
+### After a game patch
 
 Recipes and city bonuses come from the game files. To pick up new items, run:
 
