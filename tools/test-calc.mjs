@@ -171,6 +171,31 @@ test('journal profit is added per craft', () => {
   assert.equal(item('T5_METALBAR').j, undefined);
 });
 
+test('route plan picks the cheapest cities within the stop limit', () => {
+  const sword = item('T4_MAIN_SWORD'); // crafted in Lymhurst
+  const m = { prices: {
+    T4_METALBAR: { Lymhurst: { s: 100, sd: at }, Thetford: { s: 70, sd: at }, Martlock: { s: 90, sd: at } },
+    T4_LEATHER: { Lymhurst: { s: 200, sd: at }, Martlock: { s: 150, sd: at }, Thetford: { s: 190, sd: at } },
+    T4_MAIN_SWORD: { Lymhurst: { s: 4000, sd: at } }
+  } };
+  const r0 = C.routePlan(sword, S(), data, m, 0, T);
+  assert.deepEqual(r0.plan, { T4_METALBAR: 'Lymhurst', T4_LEATHER: 'Lymhurst' });
+  assert.deepEqual(r0.cities, []);
+  // One extra city: Martlock (16 bars x 90 + 8 leather x 150) and Thetford (16 x 70 + 8 x 190) both cost 2,640
+  const r1 = C.routePlan(sword, S(), data, m, 1, T);
+  assert.equal(r1.cities.length, 1);
+  assert.ok(Math.abs(r1.cost - 2640 * (1 - 0.2481)) < 1, String(r1.cost));
+  const r2 = C.routePlan(sword, S(), data, m, 2, T);
+  assert.deepEqual(r2.plan, { T4_METALBAR: 'Thetford', T4_LEATHER: 'Martlock' });
+  assert.deepEqual(r2.cities.sort(), ['Martlock', 'Thetford']);
+  // The plan feeds evaluate
+  const e = C.evaluate(sword, S({ buyPlan: r2.plan }), m, data, T);
+  assert.equal(e.rows[0].unit.city, 'Thetford'); assert.equal(e.rows[1].unit.city, 'Martlock');
+  // Your own price needs no city
+  const r3 = C.routePlan(sword, S({ overrides: { T4_LEATHER: 1 } }), data, m, 1, T);
+  assert.deepEqual(r3.plan, { T4_METALBAR: 'Thetford' });
+});
+
 test('every item in the data is well formed', () => {
   assert.ok(data.items.length > 5000);
   for (const it of data.items) {

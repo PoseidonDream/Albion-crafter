@@ -11,6 +11,7 @@
 //   levels { line: { m: mastery, s: { spec: level } } }, fce { 'line|spec': efficiency }
 //   overrides { marketId: price }                  prices you typed in yourself
 //   journals   true to add laborer journal profit (crafting gear fills Blacksmith, Fletcher, Imbuer, Tinker journals)
+//   buyPlan    { resourceId: city } to buy given resources in given cities (see routePlan)
 // Market object `m`: { prices: { id: { city: { s, sd, b, bd } } }, hist: { id: { city: { avg, n } } } }
 //   s = lowest sell listing, b = highest buy order, sd/bd = when seen (ms), avg/n = 7-day average and sold per day.
 
@@ -181,7 +182,7 @@ export function evaluate(item, s, m, data, now = Date.now()) {
   const missing = [];
   let costN = 0, costF = 0;
   const rows = item.r.map(([id, qty, noReturn]) => {
-    const unit = resourceUnit(m, id, buyCity, s, now);
+    const unit = resourceUnit(m, id, (s.buyPlan && s.buyPlan[id]) || buyCity, s, now);
     if (!unit) missing.push(id);
     const u = unit ? unit.u : 0;
     // With product return (butchering) the resources stay consumed and you get extra product instead.
@@ -215,6 +216,49 @@ export function evaluate(item, s, m, data, now = Date.now()) {
     marginF: fc && costF + extra > 0 ? profitF / (costF + extra) : 0,
     perDay: hist ? hist.n : null, avg: hist ? hist.avg : null, priced, status
   };
+}
+
+/* ---------- buying on a route ---------- */
+
+// Cheapest way to buy a recipe when you shop in the craft city plus at most `extra` other markets
+// (extra >= 6 means anywhere). Returns { plan: { resourceId: city }, home, cities: [other cities used] }.
+// Ties go to fewer cities. Resources you priced yourself, or that aren't traded, need no city.
+export function routePlan(item, s, data, m, extra = 0, now = Date.now()) {
+  const craft = craftCityFor(item, s, data);
+  const home = MARKETS.includes(craft) ? craft : (MARKETS.includes(s.buyCity) ? s.buyCity : 'Caerleon');
+  const r = rates(item, craft, s, data);
+  const res = item.r.filter(([id]) => !((s.overrides || {})[id] > 0) && !FREE.test(id)).map(([id, qty, noReturn]) => {
+    const prices = {};
+    for (const c of MARKETS) { const u = unitIn(m, id, c, s, now); if (u) prices[c] = u.u; }
+    return { id, w: qty * (noReturn || item.pr ? 1 : 1 - r.rN), prices };
+  });
+  const others = MARKETS.filter(c => c !== home);
+  const k = Math.min(Math.max(0, extra | 0), others.length);
+  const sets = [[]];
+  (function grow(start, cur) {
+    for (let i = start; i < others.length; i++) {
+      const next = [...cur, others[i]];
+      sets.push(next);
+      if (next.length < k) grow(i + 1, next);
+    }
+  })(0, []);
+  if (!k) sets.length = 1;
+  let best = null;
+  for (const set of sets) {
+    const allowed = [home, ...set], plan = {}, used = new Set();
+    let cost = 0, missing = 0;
+    for (const x of res) {
+      let pick = null;
+      for (const c of allowed) if (x.prices[c] != null && (pick == null || x.prices[c] < x.prices[pick])) pick = c;
+      if (pick == null) { missing++; continue; }
+      plan[x.id] = pick; cost += x.w * x.prices[pick];
+      if (pick !== home) used.add(pick);
+    }
+    const better = !best || missing < best.missing || (missing === best.missing && (cost < best.cost - 1e-6 ||
+      (Math.abs(cost - best.cost) <= 1e-6 && used.size < best.cities.length)));
+    if (better) best = { plan, home, cities: [...used], cost, missing };
+  }
+  return best;
 }
 
 /* ---------- a batch of crafts ---------- */

@@ -30,21 +30,29 @@ Then open http://localhost:8080.
 
 ## Using it
 
-- **Category, tiers and enchantment** at the top choose what to compare. Prices for those items load automatically
-  and are kept in your browser for 30 minutes; **Update prices** fetches them again.
-- **Craft in → Best bonus city for each item** crafts every item where it gets its city bonus (swords in Lymhurst,
-  metal bars in Thetford, potions in Brecilien…). You can also pick one city, a rest, or your hideout with its own bonus.
-- **Buy resources in / Sell in** can follow the craft city, pick the cheapest city per resource, or the best market per item
-  (including the Black Market). Transport isn't counted.
-- **Sell at**: lowest sell order (2.5% setup fee + tax), instant sell to the top buy order (tax only), or the 7-day average.
-- Click any item to see the recipe with prices, every market's prices for it, your Destiny Board levels, and a batch planner
-  with a shopping list.
-- **Your levels**: enter your mastery and specialization levels in the item view. They're saved per mastery line.
-  If the focus cost doesn't match the game, type the cost the game shows and it's matched exactly for every tier and enchantment.
-- **Your own prices**: type a price next to any resource (for example resources you gathered) or the item itself
-  to use it instead of the market's.
-- **Prices not loading?** at the bottom gives the direct API links and a box to paste their output, in case your
-  network blocks the API.
+The crafting page has two halves.
+
+**Left: best crafts for this trip.** Pick a category, tiers and enchantments, then say how far you'll go:
+*Cities to buy in, besides where you craft*: none, 1, 2 or anywhere. Every item is ranked by profit for the number of
+crafts you set, with its route (for example *Thetford → Martlock → Lymhurst*), whether it pays with or only with focus,
+and how many sell a day. Each item is crafted in its bonus city unless you pick another under *More settings*.
+
+**Right: the item you clicked.**
+
+- **Every tier and enchantment** of that item with its profit per craft, so you can see which version pays best.
+- **Your trip** as numbered stops: what to buy (or which buy orders to place) in each city, where to craft, where to sell,
+  empty and full journals, what you spend and get, and how much buying on the way earns compared with buying everything
+  in the craft city. Below it, the same trip with fewer or more stops.
+- **Where to buy and sell**: every city's price for each resource and for the item. The cheapest is green; click any
+  price to buy or sell there instead, and the trip and profit update. Type a price in *Your price* for resources you
+  gathered yourself.
+- **Your levels**: mastery and specialization levels for focus cost, or the focus cost the game shows, to match it exactly.
+
+*More settings* has the craft city, buy orders vs instant buy, sell order vs instant sell vs 7-day average, the daily bonus,
+station fee, your focus, the maximum price age and Premium. Everything is saved in your browser.
+
+**Prices not loading?** at the bottom gives the direct API links and a box to paste their output, in case your network
+blocks the API.
 
 ## Refining planner
 
@@ -89,11 +97,13 @@ if your in-game focus cost differs, use the "Focus per craft shown in game" box 
 ## Files
 
 ```
-index.html            the page
-css/style.css         styles (light and dark)
-js/calc.js            all the crafting math, no browser code
+index.html            crafting page
+refining.html         refining page
+css/v2.css            styles for both pages
+js/calc.js            all the crafting math (return rates, focus, taxes, journals, routes), no browser code
 js/market.js          Albion Online Data Project client, cache, paste fallback
-js/app.js             the interface
+js/app.js             crafting page interface
+js/refining.js        refining page interface
 data/items.json       recipes, names and city bonuses, generated
 tools/build-data.mjs  rebuilds data/items.json from the game's data files
 tools/test-calc.mjs   tests for the math

@@ -228,7 +228,8 @@ function renderMatrix(resItems, s) {
         : own.view === 'spf' ? (ev.priced && ev.fc ? fmt1(ev.spf) : '—') : (ev.priced ? fmtS1(ev.profitN) : '—');
       const sub = own.view === 'spf' ? (ev.fc ? fmt(ev.fc) + ' focus' : '') : ev.priced ? pct(own.view === 'f' ? ev.marginF : ev.marginN) : '';
       const color = own.view === 'spf' ? '' : cls(ev.priced ? (own.view === 'f' ? ev.profitF : ev.profitN) : null);
-      html += `<button type="button" class="cell" data-pick="${esc(it.id)}" aria-pressed="${it.id === own.sel}" aria-label="${esc(nameOf(it.id))} ${t}.${e}: ${v.t}, ${main}">
+      const pv = ev.priced ? (own.view === 'f' ? ev.profitF : ev.profitN) : null;
+      html += `<button type="button" class="cell ${ok(pv) && own.view !== 'spf' ? (pv > 0 ? 'up' : 'down') : ''}" data-pick="${esc(it.id)}" aria-pressed="${it.id === own.sel}" aria-label="${esc(nameOf(it.id))} ${t}.${e}: ${v.t}, ${main}">
         <span class="tag ${v.k}">${v.t}</span><span class="v ${color}">${main}</span><span class="m">${sub}</span></button>`;
     }
   }
