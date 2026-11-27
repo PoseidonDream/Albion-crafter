@@ -1,16 +1,10 @@
-// Character profiles and moving them between devices. Everything stays in the browser:
-// profiles live in localStorage, and a profile link carries one after the # (never sent to a server).
+// Character profiles, saved in this browser (localStorage). Nothing is sent anywhere.
 
 export const KEYS = ['levels', 'fce', 'focus', 'premium', 'server', 'stationFee'];
 const CHARS = 'aoc.chars.v1';
-const TAG = '#levels=';
 
-const toB64 = s => btoa(unescape(encodeURIComponent(s))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
-const fromB64 = s => decodeURIComponent(escape(atob(s.replace(/-/g, '+').replace(/_/g, '/'))));
 const clone = v => JSON.parse(JSON.stringify(v ?? null));
 const pick = s => { const o = {}; for (const k of KEYS) if (s[k] != null) o[k] = clone(s[k]); return o; };
-
-/* ---------- characters ---------- */
 
 export function loadChars() {
   try {
@@ -93,51 +87,13 @@ export function onCharPick(value, s) {
   return value ? switchChar(value, s) : false;
 }
 
-/* ---------- links ---------- */
-
-export function profileLink(s) {
-  const data = { v: 1, ...pick(s) };
-  const c = loadChars();
-  if (c.active) data.char = c.active;
-  const page = location.pathname.replace(/[^/]*$/, '') + 'index.html';
-  return location.origin + page + TAG + toB64(JSON.stringify(data));
-}
-
-// Settings carried by the current URL, or null. Removes them from the address bar.
-export function takeProfileFromUrl() {
-  if (!location.hash.startsWith(TAG)) return null;
-  let data = null;
-  try { data = JSON.parse(fromB64(location.hash.slice(TAG.length))); } catch { data = null; }
-  history.replaceState(null, '', location.pathname + location.search);
-  if (!data || data.v !== 1) return null;
-  const out = {};
-  for (const k of KEYS) if (k in data) out[k] = data[k];
-  if (out.levels && typeof out.levels !== 'object') delete out.levels;
-  if (out.fce && typeof out.fce !== 'object') delete out.fce;
-  if (validName(data.char)) out.char = data.char;
-  return out;
-}
-
-// Apply a profile from a link: becomes that character (added if new) or the current settings.
-export function applyLinkedProfile(incoming, s) {
-  const { char, ...rest } = incoming;
-  const c = loadChars();
-  if (c.active) c.chars[c.active] = pick(s);  // keep the character you had
-  Object.assign(s, { levels: {}, fce: {} }, rest);
-  if (char) c.active = char;
-  if (c.active) c.chars[c.active] = pick(s);
-  storeChars(c);
-}
-
-// Would applying this link overwrite levels already saved here?
-export function linkWouldReplace(incoming, s) {
-  const c = loadChars();
-  if (incoming.char) return !!c.chars[incoming.char] && hasLevels(c.chars[incoming.char]);
-  return hasLevels(s);
-}
-
-export const hasLevels = s => Object.keys(s.levels || {}).length > 0 || Object.keys(s.fce || {}).length > 0;
-
-export async function copyText(text) {
-  try { await navigator.clipboard.writeText(text); return true; } catch { return false; }
+// Show "Saved" briefly next to the character picker.
+let flashTimer = null;
+export function flashSaved(ok = true) {
+  const el = document.getElementById('saved');
+  if (!el) return;
+  el.textContent = ok ? '✓ Saved' : 'Not saved: browser storage is off';
+  el.className = 'saved on' + (ok ? '' : ' err');
+  clearTimeout(flashTimer);
+  if (ok) flashTimer = setTimeout(() => { el.className = 'saved'; }, 1800);
 }

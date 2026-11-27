@@ -43,8 +43,9 @@ function saveShared() {
   for (const k of ['server', 'premium', 'focus', 'levels', 'fce', 'overrides']) all[k] = shared[k];
   write(SHARED, all);
   P.syncActive(shared);
+  P.flashSaved(true);
 }
-const saveOwn = debounce(() => write(OWN, own), 200);
+const saveOwn = debounce(() => { write(OWN, own); P.flashSaved(true); }, 200);
 
 // Settings for calc.js built from the shared and refining-only settings.
 function settings(extra = {}) {

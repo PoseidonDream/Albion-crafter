@@ -40,12 +40,14 @@ station fee, your focus, the maximum price age and Premium. Everything is saved 
 **Prices not loading?** at the bottom gives the direct API links and a box to paste their output, in case your network
 blocks the API.
 
-## Characters and other devices
+## Saved in your browser
 
-Everything you enter is saved in your browser, so it's still there next time. Pick or add your character at the top
-(next to the server) and your levels, focus and Premium setting are kept per character, so alts with different
-specs each keep their own. To use your levels on your phone or another browser, open *More settings* and press
-**Copy link with my levels**, then open that link there. Nothing is stored on a server and no login is needed.
+Everything you enter (levels, focus, settings, your own prices) is saved in your browser as you type, so it's
+still there next time you open the site. A small **✓ Saved** appears at the top when it's stored. Nothing is sent
+to a server and there's no login.
+
+Pick or add your character at the top (next to the server) and your levels and focus are kept per character, so
+alts with different specs each keep their own.
 
 ## Refining planner
 
@@ -108,7 +110,7 @@ js/calc.js            all the crafting math (return rates, focus, taxes, journal
 js/market.js          Albion Online Data Project client, cache, paste fallback
 js/app.js             crafting page interface
 js/refining.js        refining page interface
-js/profile.js         characters and the link that carries your levels to another device
+js/profile.js         characters saved in the browser
 data/items.json       recipes, names and city bonuses, generated
 tools/build-data.mjs  rebuilds data/items.json from the game's data files
 tools/test-calc.mjs   tests for the math
