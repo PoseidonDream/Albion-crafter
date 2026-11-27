@@ -31,6 +31,45 @@ export function clearLines(s, lines) {
   for (const line of lines) { delete s.levels[line]; dropCalibrations(s, line); }
 }
 
+// A link can carry levels: #char=Name&set=refine_ore.T4:100,potion.m:100,potion.HEAL:38
+// (`m` is the mastery). Entries that aren't a real mastery or specialization are skipped.
+export function parseLevelHash(data, hash) {
+  const h = new URLSearchParams(String(hash || '').replace(/^#/, ''));
+  const set = h.get('set');
+  if (!set) return null;
+  const levels = {};
+  let count = 0;
+  for (const part of set.split(',')) {
+    const m = /^([a-z_]+)\.([A-Za-z0-9_]+):(\d{1,3})$/.exec(part.trim());
+    if (!m) continue;
+    const [, line, spec, raw] = m, info = data.lines[line];
+    if (!info || info.noLevels) continue;
+    if (spec === 'm' ? info.mastery === false : !data.specs[line + '|' + spec]) continue;
+    const lv = levels[line] || (levels[line] = { m: 0, s: {} }), v = clamp(raw);
+    if (spec === 'm') lv.m = v; else if (v) lv.s[spec] = v; else delete lv.s[spec];
+    count++;
+  }
+  return count ? { name: (h.get('char') || '').trim(), levels, count } : null;
+}
+
+export function levelHash(name, levels) {
+  const parts = [];
+  for (const [line, lv] of Object.entries(levels)) {
+    if (lv.m) parts.push(`${line}.m:${lv.m}`);
+    for (const [spec, v] of Object.entries(lv.s || {})) if (v) parts.push(`${line}.${spec}:${v}`);
+  }
+  return `#${name ? 'char=' + encodeURIComponent(name) + '&' : ''}set=${parts.join(',')}`;
+}
+
+// Put a link's levels in. Each mastery it names is replaced as a whole; the others stay as they are.
+export function applyLevels(s, levels) {
+  for (const [line, lv] of Object.entries(levels)) {
+    dropCalibrations(s, line);
+    if (lv.m || Object.keys(lv.s).length) s.levels[line] = { m: lv.m, s: { ...lv.s } };
+    else delete s.levels[line];
+  }
+}
+
 function dropCalibrations(s, line) {
   for (const k of Object.keys(s.fce || {})) if (k.startsWith(line + '|')) delete s.fce[k];
 }

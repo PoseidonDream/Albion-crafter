@@ -216,6 +216,21 @@ test('quick fill sets whole masteries', () => {
   assert.equal(s.levels.plate_armor, undefined);
 });
 
+test('a link fills in levels', () => {
+  const link = L.parseLevelHash(data, '#char=FIVEGUYS&set=refine_ore.T4:100,refine_ore.m:50,potion.m:100,potion.HEAL:38,potion.NOPE:5,food.SOUP:250,junk,furniture.m:9');
+  assert.equal(link.name, 'FIVEGUYS');
+  assert.equal(link.count, 4);                                  // refining has no mastery, NOPE isn't a spec, furniture has no node
+  assert.deepEqual(link.levels, { refine_ore: { m: 0, s: { T4: 100 } }, potion: { m: 100, s: { HEAL: 38 } }, food: { m: 0, s: { SOUP: 100 } } });
+  assert.equal(L.parseLevelHash(data, '#set=junk'), null);
+  assert.equal(L.parseLevelHash(data, ''), null);
+  assert.deepEqual(L.parseLevelHash(data, L.levelHash('FIVEGUYS', link.levels)).levels, link.levels);
+  const s = S({ levels: { potion: { m: 10, s: { ENERGY: 50 } }, sword: { m: 7, s: {} } }, fce: { 'potion|HEAL': 123 } });
+  L.applyLevels(s, link.levels);
+  assert.deepEqual(s.levels.potion, { m: 100, s: { HEAL: 38 } });   // a named mastery is replaced whole
+  assert.deepEqual(s.levels.sword, { m: 7, s: {} });                // others stay
+  assert.equal(s.fce['potion|HEAL'], undefined);
+});
+
 test('masteries match the Destiny Board', () => {
   const specs = line => L.specsOf(data, line).sort();
   // Refining: only T4 to T8 nodes, no mastery level
