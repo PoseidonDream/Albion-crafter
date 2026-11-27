@@ -317,7 +317,11 @@ table.mounts tr.short td:first-child b{font-weight:500}
 .cp-open{position:fixed;right:14px;bottom:16px;z-index:41;border:none;border-radius:999px;background:var(--accent);color:var(--accent-ink);font-weight:600;padding:12px 18px;min-height:46px;box-shadow:0 6px 18px rgba(16,32,48,.25);cursor:pointer}
 .cp-open[hidden]{display:none}
 @media (min-width:1500px){
-  body.cp-docked{padding-right:292px}
+  /* Docked: the page and the calculator sit side by side, centred together. The page keeps up to
+     1440px and moves left as far as needed; the calculator starts where the page ends. */
+  body.cp-docked{--cp-left:max(0px, calc((100vw - 1760px) / 2));--cp-w:min(1440px, calc(100vw - 312px))}
+  body.cp-docked .wrap,body.cp-docked .bar-in{margin-left:var(--cp-left);margin-right:auto;max-width:var(--cp-w)}
+  body.cp-docked .calcpad{right:auto;left:calc(var(--cp-left) + var(--cp-w))}
   .cp-open{top:64px;bottom:auto;border-radius:10px 0 0 10px;right:0;padding:10px 12px}
 }
 @media (max-width:1499px){
