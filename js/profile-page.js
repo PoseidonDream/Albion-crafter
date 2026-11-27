@@ -55,8 +55,8 @@ async function boot() {
   try { localStorage.setItem(ONBOARD, '1'); } catch { /* ignore */ }
   if (welcome) open.add(groups[0].key);
   wire();
-  takeLink();
   render();
+  try { takeLink(); } catch (err) { console.error(err); } // never let a link stop the page from showing
 }
 
 // profile.html#char=Name&set=line.spec:level,… offers to fill those levels in. The question is shown
@@ -64,11 +64,32 @@ async function boot() {
 // stays in the address bar until it's answered.
 let pending = null;
 const clearHash = () => history.replaceState(null, '', location.pathname + location.search);
+// The box is made here rather than in profile.html, so a browser holding an older copy of the
+// page still gets it (GitHub Pages lets browsers keep pages for 10 minutes).
+function linkBox() {
+  let box = $('linkNote');
+  if (box && $('linkMsg') && $('linkYes')) return box;
+  if (box) box.remove();
+  box = document.createElement('section');
+  box.className = 'linknote';
+  box.id = 'linkNote';
+  box.setAttribute('role', 'status');
+  box.hidden = true;
+  box.innerHTML = `<p id="linkMsg"></p>
+    <div class="ctl" id="linkBtns" hidden>
+      <button type="button" class="btn fill" id="linkYes">Fill them in</button>
+      <button type="button" class="btn quiet" id="linkNo">Not now</button>
+    </div>`;
+  const wrap = document.querySelector('.wrap') || document.body;
+  wrap.insertBefore(box, wrap.querySelector('.controls') || wrap.firstChild);
+  return box;
+}
 function showLinkNote(text, ask) {
+  const box = linkBox();
   $('linkMsg').textContent = text;
   $('linkBtns').hidden = !ask;
-  $('linkNote').hidden = false;
-  if (ask) $('linkNote').scrollIntoView({ block: 'nearest' });
+  box.hidden = false;
+  if (ask) box.scrollIntoView({ block: 'nearest' });
 }
 const linkWho = link => link.name || P.loadChars().active || 'this browser';
 const linkNames = link => Object.keys(link.levels).map(l => D.lines[l].name).join(', ');
@@ -81,7 +102,7 @@ function takeLink() {
   showLinkNote(`This link has ${link.count} levels for ${linkWho(pending)}: ${linkNames(pending)}. Fill them in? Only these masteries change; anything else you entered stays.`, true);
 }
 
-function declineLink() { pending = null; clearHash(); $('linkNote').hidden = true; }
+function declineLink() { pending = null; clearHash(); linkBox().hidden = true; }
 
 function acceptLink() {
   const link = pending;
@@ -152,9 +173,11 @@ function wire() {
     const d = e.target;
     if (d.matches && d.matches('details[data-group]')) { if (d.open) open.add(d.dataset.group); else open.delete(d.dataset.group); }
   }, true);
-  addEventListener('hashchange', takeLink);
-  $('linkYes').addEventListener('click', acceptLink);
-  $('linkNo').addEventListener('click', declineLink);
+  addEventListener('hashchange', () => { try { takeLink(); } catch (err) { console.error(err); } });
+  document.addEventListener('click', e => {
+    if (e.target.closest('#linkYes')) acceptLink();
+    else if (e.target.closest('#linkNo')) declineLink();
+  });
   document.querySelectorAll('[data-done]').forEach(a => a.addEventListener('click', () => { try { localStorage.setItem(ONBOARD, '1'); } catch { /* ignore */ } }));
 }
 
