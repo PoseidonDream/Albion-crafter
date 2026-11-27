@@ -3,7 +3,7 @@ import * as C from './calc.js?v=4'; // ?v: a cached older copy can't be mixed in
 import * as M from './market.js';
 import * as P from './profile.js';
 import * as L from './levels.js';
-import * as H from './haul.js?v=4';
+import * as H from './haul.js?v=5';
 
 /* ---------- helpers ---------- */
 const $ = id => document.getElementById(id);

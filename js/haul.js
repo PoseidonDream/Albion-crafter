@@ -49,7 +49,9 @@ export function mountSection({ data, m, s, kg, far, home, kgOverride, products }
   } else lines.push(`Planning a load of <b>${kgText(load)}</b>.`);
   if (o.fits) lines.push(`Cheapest mount that carries it in one trip: <b>${esc(name(o.fits.id))}</b> (${kgText(o.fits.kg)}) for <b>${fmt(o.fits.price)}</b> in ${esc(o.fits.city)}.`);
   else if (priced && load > 0) lines.push('No single mount carries all of it: split it over the trips below.');
-  if (o.value && (!o.fits || o.value.id !== o.fits.id)) lines.push(`Least silver per kg: <b>${esc(name(o.value.id))}</b> at ${fmt1(o.value.perKg)} per kg, worth it if you haul big loads often.`);
+  // The usual hauler, always shown for comparison
+  const ox = o.list.find(x => x.id === 'T8_MOUNT_OX');
+  if (ox && (!o.fits || o.fits.id !== ox.id)) lines.push(`Elder's Transport Ox (T8, ${kgText(ox.kg)}): ${ox.price != null ? `<b>${fmt(ox.price)}</b> in ${esc(ox.city)}` : 'no price yet'}${load > 0 ? ` · ${ox.trips} trip${ox.trips === 1 ? '' : 's'} for this load` : ''}.`);
   if (!priced) lines.push('<span class="muted">No mount prices yet. Press Refresh.</span>');
   const rows = o.list.map(x => `<tr class="${o.fits && x.id === o.fits.id ? 'best' : ''}${x.kg < load ? ' short' : ''}">
       <td><b>${esc(name(x.id))}</b><small class="muted">T${x.t} · +${x.sp}% speed</small></td>
