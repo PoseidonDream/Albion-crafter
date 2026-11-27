@@ -10,7 +10,7 @@ export const groupOf = (data, cat) => data.groups.find(g => g.cats.some(c => c.k
 // Mastery lines in a group that use focus (the only ones levels matter for).
 export function linesInGroup(data, group) {
   const cats = new Set(group.cats.map(c => c.key));
-  return [...new Set(data.items.filter(i => cats.has(i.c) && i.f).map(i => i.l))];
+  return [...new Set(data.items.filter(i => cats.has(i.c) && i.f && !(data.lines[i.l] || {}).noLevels).map(i => i.l))];
 }
 
 // Set the mastery and every specialization of each line to `value`. A calibration typed from the
@@ -20,7 +20,7 @@ export function fillLines(s, data, lines, value) {
   for (const line of lines) {
     dropCalibrations(s, line);
     if (!v) { delete s.levels[line]; continue; }
-    const lv = { m: v, s: {} };
+    const lv = { m: (data.lines[line] || {}).mastery === false ? 0 : v, s: {} };
     for (const spec of specsOf(data, line)) lv.s[spec] = v;
     s.levels[line] = lv;
   }

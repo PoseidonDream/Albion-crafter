@@ -51,6 +51,12 @@ Under each box it shows how much less focus that item costs with your levels. Qu
 group or everything at once, and the search box finds a mastery or item by name. The first time someone opens the
 site, it starts here with a short welcome; after that it opens on the crafting page.
 
+The masteries and specializations follow the game's Destiny Board, checked against the game's own text file:
+gathering tools and gear sit under one mastery per gathering type (for example *Lumberjack Crafter*: the axe plus
+Cap, Garb and Workboots), refining has only its Adept (T4) to Elder (T8) nodes, capes have one specialization,
+mounts have a mastery with no specializations, alcohol is the Alchemist's *Bootlegger* specialization, and
+furniture has no node at all.
+
 ## Saved in your browser
 
 Everything you enter (levels, focus, settings, your own prices) is saved in your browser as you type, so it's
@@ -87,7 +93,7 @@ share of a journal × (full journal price after tax − empty journal price) to 
 | Return rate | 1 − 1 ÷ (1 + production bonus) |
 | Production bonus | city 18% (refining in rests 15%) + city specialty (+15% crafting, +40% refining) + focus 59% + daily bonus 10/20% |
 | Focus cost | base focus × 0.5^(efficiency ÷ 10,000) |
-| Focus efficiency | 30 × mastery + 250 × the item's own specialization + 30 (potions: 18) × every specialization level in the same mastery |
+| Focus efficiency | 30 × mastery + 250 × the item's own specialization + 30 (potions: 18) × every specialization level in the same mastery. Refining has no mastery level, only its T4–T8 nodes |
 | Station fee | item value × 0.1125 nutrition × fee per 100 nutrition ÷ 100 |
 | Market tax | 4% with Premium, 8% without; placing an order adds 2.5% |
 | Profit per craft | items × price after tax − resources used after returns − station fee |

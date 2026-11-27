@@ -66,10 +66,28 @@ const GROUPS = [
 // Destiny Board masteries ("lines"). Every item belongs to one line and one specialization
 // in it. `mutual` is the focus efficiency each level of any specialization in the line gives
 // to every item of the line (potions use a lower value than everything else).
+// Masteries follow the game's Destiny Board (checked against its localization file):
+// - gathering: one mastery per gathering type (e.g. Lumberjack Crafter) covering the tool and the gear,
+//   with Cap, Garb and Workboots specializations; siege hammer and tracking toolkit have their own;
+// - refining: no mastery, only T4 to T8 nodes per resource (e.g. Adept to Elder Ore Smelter);
+// - capes: one Cape Tailoring specialization; mounts: Mount Trainer with no specializations;
+// - alcohol is the Alchemist's Bootlegger specialization; furniture has no crafting node.
+// `mastery: false` = no mastery level; `noLevels: true` = no Destiny Board node at all.
 const LINES = {};
 for (const [, , cats] of GROUPS) for (const [k, n] of cats) LINES[k] = { name: n, mutual: k === 'potion' ? 18 : 30 };
 LINES.factioncape = LINES.cape = { name: 'Capes', mutual: 30 };
 LINES.cooking = LINES.butcher = LINES.food = { name: 'Cooking', mutual: 30 };
+const GATHER = { fiber: ['Harvester', 'sickle'], hide: ['Skinner', 'skinning knife'], ore: ['Miner', 'pickaxe'], rock: ['Quarrier', 'stone hammer'], wood: ['Lumberjack', 'axe'], fish: ['Fisherman', 'fishing rod'] };
+for (const [k, [who, tool]] of Object.entries(GATHER)) LINES['gatherer_' + k] = { name: `${who} (${tool} and gear)`, mutual: 30 };
+LINES.siege = { name: 'Siege Equipment', mutual: 30 };
+LINES.tracking = { name: 'Tracking Toolkit', mutual: 30 };
+const REFINE = { ore: 'Ore Smelter (metal bars)', wood: 'Wood Planer (planks)', fiber: 'Fiber Weaver (cloth)', hide: 'Hide Tanner (leather)', rock: 'Stone Cutter (stone blocks)' };
+for (const [k, n] of Object.entries(REFINE)) LINES['refine_' + k] = { name: n, mutual: 30, mastery: false };
+LINES.mount = { name: 'Mount Trainer (mounts)', mutual: 0 };
+LINES.furniture = { name: 'Furniture', mutual: 0, mastery: false, noLevels: true };
+delete LINES.tools;
+const TOOL_LINE = { SICKLE: 'gatherer_fiber', KNIFE: 'gatherer_hide', PICK: 'gatherer_ore', HAMMER: 'gatherer_rock', AXE: 'gatherer_wood', FISHINGROD: 'gatherer_fish' };
+const GEAR_SPECS = { HEAD: 'Cap', ARMOR: 'Garb', SHOES: 'Workboots' };
 
 const SKIP = /^UNIQUE_|PROTOTYPE|GAMEMASTER|_TEST|NONTRADABLE|TELLAFRIEND|VANITY|_ADC_|_BATTLE$/;
 const FOOD_SPECS = { SOUP: 'Soup', SALAD: 'Salad', PIE: 'Pie', OMELETTE: 'Omelette', STEW: 'Stew', SANDWICH: 'Sandwich', ROAST: 'Roast' };
@@ -81,24 +99,35 @@ function classify(kind, it) {
   const shop = it['@shopcategory'], sub = it['@shopsubcategory1'], cc = it['@craftingcategory'];
   const base = id.replace(/^T\d_/, '');
   if (SKIP.test(id)) return null;
-  if (shop === 'weapons' && LINES[sub]) return { cat: sub, spec: base };
+  // Weapons use their crafting category as the mastery: Black Hands is listed with war gloves but crafted as a dagger
+  if (shop === 'weapons' && LINES[sub]) return { cat: sub, line: LINES[cc] ? cc : sub, spec: base };
   if (['armors', 'head', 'shoes'].includes(shop) && LINES[sub]) return { cat: sub, spec: base };
   if (shop === 'offhands' && LINES[sub]) return { cat: sub, spec: base };
   if (shop === 'bags') return { cat: 'bag', spec: base };
-  if (shop === 'capes' && /^T\d_CAPE$/.test(id)) return { cat: 'cape', spec: base };
-  if (shop === 'capes' && /^T\d_CAPEITEM_/.test(id)) return { cat: 'factioncape', line: 'cape', spec: base };
-  if (cc === 'tools') return { cat: 'tools', spec: base };
-  if (cc === 'gatherergear') return { cat: 'gatherer_' + sub, spec: base };
+  if (shop === 'capes' && /^T\d_CAPE$/.test(id)) return { cat: 'cape', spec: 'CAPE' };
+  if (shop === 'capes' && /^T\d_CAPEITEM_/.test(id)) return { cat: 'factioncape', line: 'cape', spec: 'CAPE' };
+  if (cc === 'tools') {
+    const m = base.match(/^2H_TOOL_([A-Z]+)/), t = m ? m[1] : '';
+    if (TOOL_LINE[t]) return { cat: 'tools', line: TOOL_LINE[t], spec: '' };
+    if (t === 'SIEGEHAMMER') return { cat: 'tools', line: 'siege', spec: 'SIEGEHAMMER' };
+    if (t === 'TRACKING') return { cat: 'tools', line: 'tracking', spec: 'TRACKING' };
+    return null;
+  }
+  if (cc === 'gatherergear') {
+    const slot = base.split('_')[0];
+    return { cat: 'gatherer_' + sub, spec: GEAR_SPECS[slot] ? slot : '' };
+  }
   if (cc === 'potion' && sub === 'potions') return { cat: 'potion', spec: base.replace(/^POTION_/, '') };
   if (cc === 'food' && sub === 'food') {
     const k = base.replace(/^MEAL_/, '').split('_')[0];
-    return { cat: 'food', spec: FOOD_SPECS[k] ? k : 'OTHER' };
+    return { cat: 'food', spec: FOOD_SPECS[k] ? k : '' };
   }
+  if (shop === 'farming' && cc === 'food' && /_ALCOHOL$/.test(id)) return { cat: 'cooking', line: 'potion', spec: 'ALCOHOL' };
   if (shop === 'farming' && cc === 'food') return { cat: 'cooking', line: 'food', spec: 'INGREDIENTS' };
   if (shop === 'farming' && cc && cc.startsWith('meat_')) return { cat: 'butcher', line: 'food', spec: 'BUTCHER' };
-  if (sub === 'refinedresources' && ['ore', 'wood', 'fiber', 'hide', 'rock'].includes(cc)) return { cat: 'refine_' + cc, spec: 'T' + it['@tier'], refine: true };
-  if (kind === 'mount' && sub === 'basemounts') return { cat: 'mount', spec: base };
-  if (kind === 'furnitureitem' && ['chest', 'repairkit', 'labourers'].includes(sub) && /^T\d_/.test(id)) return { cat: 'furniture', spec: base };
+  if (sub === 'refinedresources' && ['ore', 'wood', 'fiber', 'hide', 'rock'].includes(cc)) return { cat: 'refine_' + cc, spec: +it['@tier'] >= 4 ? 'T' + it['@tier'] : '', refine: true };
+  if (kind === 'mount' && sub === 'basemounts') return { cat: 'mount', spec: '' };
+  if (kind === 'furnitureitem' && ['chest', 'repairkit', 'labourers'].includes(sub) && /^T\d_/.test(id)) return { cat: 'furniture', spec: '' };
   return null;
 }
 
@@ -182,7 +211,7 @@ async function main() {
       out.push(rec);
       used.add(id);
       const key = line + '|' + cls.spec;
-      if (!specNames[key]) specNames[key] = specName(cls, en[id] || id);
+      if (cls.spec && !specNames[key]) specNames[key] = specName(cls, en[id] || id);
     }
   }
   out.sort((a, b) => (a.c < b.c ? -1 : a.c > b.c ? 1 : a.s < b.s ? -1 : a.s > b.s ? 1 : a.t - b.t || a.e - b.e));
@@ -215,8 +244,14 @@ async function main() {
   console.log(per);
 }
 
+const REFINE_TIER = { T4: 'Adept', T5: 'Expert', T6: 'Master', T7: 'Grandmaster', T8: 'Elder' };
 function specName(cls, itemName) {
-  if (cls.refine) return cls.spec + ' refining';
+  if (cls.refine) return `${REFINE_TIER[cls.spec]} (${cls.spec})`;
+  if (cls.spec === 'CAPE') return 'Cape';
+  if (cls.spec === 'ALCOHOL') return 'Bootlegger (alcohol)';
+  if (GEAR_SPECS[cls.spec] && cls.cat.startsWith('gatherer_')) return GEAR_SPECS[cls.spec];
+  if (cls.spec === 'SIEGEHAMMER') return 'Siege Hammer';
+  if (cls.spec === 'TRACKING') return 'Tracking Toolkit';
   if (cls.cat === 'food') return FOOD_SPECS[cls.spec] || 'Other dishes';
   if (cls.cat === 'cooking') return 'Ingredients';
   if (cls.cat === 'butcher') return 'Butcher';

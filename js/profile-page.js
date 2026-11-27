@@ -116,7 +116,7 @@ function reduction(line, spec) {
   const key = line + '|' + spec;
   const lv = S.levels[line] || {}, specs = lv.s || {};
   const fce = S.fce[key] != null ? +S.fce[key]
-    : C.FCE_MASTERY * clamp(lv.m) + C.FCE_SPEC * clamp(specs[spec]) + ((D.lines[line] || {}).mutual || 0) * Object.values(specs).reduce((a, v) => a + clamp(v), 0);
+    : ((D.lines[line] || {}).mastery === false ? 0 : C.FCE_MASTERY * clamp(lv.m)) + C.FCE_SPEC * clamp(specs[spec]) + ((D.lines[line] || {}).mutual || 0) * Object.values(specs).reduce((a, v) => a + clamp(v), 0);
   return 1 - Math.pow(0.5, fce / 10000);
 }
 const isSet = line => { const lv = S.levels[line]; return !!(lv && (lv.m || Object.keys(lv.s || {}).length)) || Object.keys(S.fce).some(k => k.startsWith(line + '|')); };
@@ -163,7 +163,7 @@ function lineCard(l, q) {
     </div>
     ${calibrated ? `<p class="note">${calibrated} item${calibrated > 1 ? 's use' : ' uses'} the focus cost you typed from the game. Changing a level here replaces it.</p>` : ''}
     <div class="spec-grid2">
-      <label class="spec-cell mastery"><span>Mastery</span><input type="number" min="0" max="100" inputmode="numeric" data-line="${l.line}" data-spec="m" value="${lv.m || ''}" placeholder="0"><small>all items</small></label>
+      ${(D.lines[l.line] || {}).mastery === false ? '' : `<label class="spec-cell mastery"><span>Mastery</span><input type="number" min="0" max="100" inputmode="numeric" data-line="${l.line}" data-spec="m" value="${lv.m || ''}" placeholder="0"><small>all items</small></label>`}
       ${l.specs.map(s => `<label class="spec-cell${q && s.name.toLowerCase().includes(q) ? ' hit' : ''}"><span>${esc(s.name)}</span><input type="number" min="0" max="100" inputmode="numeric" data-line="${l.line}" data-spec="${esc(s.spec)}" value="${specs[s.spec] || ''}" placeholder="0"><small data-eff="${esc(s.spec)}">${effectText(l.line, s.spec)}</small></label>`).join('')}
     </div>
   </div>`;
@@ -175,7 +175,7 @@ function updateLine(line) {
   if (card) card.querySelectorAll('[data-eff]').forEach(el => { el.textContent = effectText(line, el.dataset.eff); });
   for (const g of groups) {
     const el = document.querySelector(`[data-count="${g.key}"]`);
-    if (el) el.textContent = `${g.lines.filter(l => isSet(l.line)).length} of ${g.lines.length} masteries set`;
+    if (el) el.textContent = `${g.lines.filter(l => isSet(l.line)).length} of ${g.lines.length} ${g.lines.length === 1 ? 'mastery' : 'masteries'} set`;
   }
   const total = groups.reduce((a, g) => a + g.lines.length, 0), set = groups.reduce((a, g) => a + g.lines.filter(l => isSet(l.line)).length, 0);
   $('progress').textContent = `${set} of ${total} masteries have levels for ${P.loadChars().active || 'this browser'}. Everything saves as you type.`;

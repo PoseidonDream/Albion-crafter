@@ -341,7 +341,7 @@ function renderDetail(it, s) {
 
   // Levels
   const lv = shared.levels[it.l] || {}, calKey = it.l + '|' + it.s;
-  const tiers = [...new Set(items.filter(i => i.l === it.l).map(i => i.s))].sort();
+  const tiers = L.specsOf(D, it.l).sort();
 
   // Keep the cursor in the input being typed in across the re-render
   const act = document.activeElement;
@@ -396,9 +396,9 @@ function renderDetail(it, s) {
     </div>
     <div class="specs" aria-label="Refining levels">
       <span class="muted">${esc(D.lines[it.l].name)} levels</span>
-      <label>Mastery <input type="number" min="0" max="100" data-lv="m" value="${lv.m || ''}" placeholder="0"></label>
       ${tiers.map(t => `<label${t === it.s ? ' style="color:var(--accent)"' : ''}>${t} <input type="number" min="0" max="100" data-lv="${t}" value="${(lv.s || {})[t] || ''}" placeholder="0"></label>`).join('')}
-      <label>Focus per ${esc(it.s)} refine in game <input type="number" min="1" data-cal value="${shared.fce[calKey] != null ? e.fc : ''}" placeholder="${e.fc}"></label>
+      ${it.s ? '' : `<span class="note">T${it.t} has no Destiny Board node; only T4 to T8 do.</span>`}
+      <label>Focus per T${it.t} refine in game <input type="number" min="1" data-cal value="${shared.fce[calKey] != null ? e.fc : ''}" placeholder="${e.fc}"></label>
       <a href="profile.html">All your levels →</a>
     </div>` : ''}`;
   if (keep) { const el = $('detail').querySelector(keep); if (el) el.focus({ preventScroll: true }); }

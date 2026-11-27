@@ -216,6 +216,34 @@ test('quick fill sets whole masteries', () => {
   assert.equal(s.levels.plate_armor, undefined);
 });
 
+test('masteries match the Destiny Board', () => {
+  const specs = line => L.specsOf(data, line).sort();
+  // Refining: only T4 to T8 nodes, no mastery level
+  for (const r of ['ore', 'wood', 'fiber', 'hide', 'rock']) {
+    assert.deepEqual(specs('refine_' + r), ['T4', 'T5', 'T6', 'T7', 'T8']);
+    assert.equal(data.lines['refine_' + r].mastery, false);
+  }
+  assert.equal(item('T3_METALBAR').s, '');
+  const s = S({ levels: { refine_ore: { m: 100, s: { T5: 100 } } } });
+  assert.equal(C.fceFor(item('T5_METALBAR'), s, data), 250 * 100 + 30 * 100); // the mastery number is ignored
+  // Gathering: one mastery per gathering type with Cap, Garb and Workboots; tools sit in it with no specialization
+  assert.deepEqual(specs('gatherer_wood'), ['ARMOR', 'HEAD', 'SHOES']);
+  assert.equal(item('T4_2H_TOOL_AXE').l, 'gatherer_wood');
+  assert.equal(item('T4_2H_TOOL_AXE').s, '');
+  assert.equal(item('T4_2H_TOOL_SIEGEHAMMER').l, 'siege');
+  assert.equal(item('T4_2H_TOOL_TRACKING').l, 'tracking');
+  assert.equal(data.lines.tools, undefined);
+  // Capes: one specialization; Black Hands is crafted as a dagger; alcohol is the Alchemist's Bootlegger
+  assert.deepEqual(specs('cape'), ['CAPE']);
+  assert.equal(item('T4_2H_IRONGAUNTLETS_HELL').l, 'dagger');
+  assert.equal(item('T6_ALCOHOL').l, 'potion');
+  assert.equal(item('T6_ALCOHOL').s, 'ALCOHOL');
+  // Mounts: a mastery with no specializations; furniture: no node at all
+  assert.deepEqual(specs('mount'), []);
+  assert.equal(data.lines.furniture.noLevels, true);
+  assert.ok(!L.linesInGroup(data, L.groupOf(data, 'furniture')).includes('furniture'));
+});
+
 test('every item in the data is well formed', () => {
   assert.ok(data.items.length > 5000);
   for (const it of data.items) {
