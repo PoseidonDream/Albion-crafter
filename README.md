@@ -66,6 +66,10 @@ to a server and there's no login.
 Pick or add your character at the top (next to the server) and your levels and focus are kept per character, so
 alts with different specs each keep their own.
 
+Levels can also come in a link, such as
+`profile.html#char=Name&set=refine_ore.T4:100,potion.m:100,potion.HEAL:38` (`m` is the mastery level).
+Opening it asks first, then fills those masteries in for that character in your browser and leaves the rest alone.
+
 ## Refining planner
 
 `refining.html` (the **Refining** link at the top) is a page just for refining:

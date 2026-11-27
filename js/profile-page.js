@@ -55,7 +55,33 @@ async function boot() {
   try { localStorage.setItem(ONBOARD, '1'); } catch { /* ignore */ }
   if (welcome) open.add(groups[0].key);
   wire();
+  takeLink();
   render();
+}
+
+// profile.html#char=Name&set=line.spec:level,… fills those levels in (after asking).
+function takeLink() {
+  if (!/(^#|&)set=/.test(location.hash)) return;
+  const link = L.parseLevelHash(D, location.hash);
+  history.replaceState(null, '', location.pathname + location.search);
+  const note = $('linkNote');
+  if (!link) { note.textContent = 'That link has no levels this site knows.'; note.hidden = false; return; }
+  const name = P.validName(link.name) ? link.name : '';
+  const who = name || P.loadChars().active || 'this browser';
+  const lines = Object.keys(link.levels), names = lines.map(l => D.lines[l].name);
+  if (!confirm(`Fill in ${link.count} levels for ${who}?\n\n${names.map(n => '• ' + n).join('\n')}\n\nOnly these masteries change. Anything else you entered stays.`)) return;
+  if (name) {
+    const c = P.loadChars();
+    if (!c.chars[name]) P.addChar(name, S);
+    else if (c.active !== name) P.switchChar(name, S);
+  }
+  L.applyLevels(S, link.levels);
+  for (const g of groups) if (g.lines.some(x => lines.includes(x.line))) open.add(g.key);
+  $('char').innerHTML = P.charOptions();
+  store();
+  render();
+  note.textContent = `✓ Filled in ${link.count} levels for ${who}: ${names.join(', ')}. They're saved in this browser; check them below.`;
+  note.hidden = false;
 }
 function firstCat(line) { const it = D.items.find(i => i.l === line); return it ? it.c : ''; }
 
@@ -108,6 +134,7 @@ function wire() {
     const d = e.target;
     if (d.matches && d.matches('details[data-group]')) { if (d.open) open.add(d.dataset.group); else open.delete(d.dataset.group); }
   }, true);
+  addEventListener('hashchange', () => { takeLink(); render(); });
   document.querySelectorAll('[data-done]').forEach(a => a.addEventListener('click', () => { try { localStorage.setItem(ONBOARD, '1'); } catch { /* ignore */ } }));
 }
 
