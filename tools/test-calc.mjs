@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import * as C from '../js/calc.js';
 import * as L from '../js/levels.js';
+import * as K from '../js/calcpad.js';
 
 const data = JSON.parse(readFileSync(new URL('../data/items.json', import.meta.url), 'utf8'));
 const item = id => data.items.find(x => x.id === id);
@@ -267,4 +268,56 @@ test('every item in the data is well formed', () => {
     for (const [rid, q] of it.r) assert.ok(rid && q > 0, it.id);
     assert.ok(data.lines[it.l], 'line ' + it.l);
   }
+});
+
+test('buying everything in one city and carrying it', () => {
+  const now = T;
+  const m = { prices: {
+    T4_ORE: { Thetford: { s: 100, sd: at, b: 90, bd: at }, Martlock: { s: 80, sd: at, b: 0, bd: 0 }, Lymhurst: { s: 95, sd: at, b: 0, bd: 0 } },
+    T3_METALBAR: { Thetford: { s: 50, sd: at, b: 0, bd: 0 }, Lymhurst: { s: 40, sd: at, b: 0, bd: 0 } },
+    T6_MOUNT_OX: { Martlock: { s: 200000, sd: at, b: 0, bd: 0 }, Lymhurst: { s: 190000, sd: at, b: 0, bd: 0 } },
+    T8_MOUNT_OX: { Caerleon: { s: 900000, sd: at, b: 0, bd: 0 } },
+    T8_MOUNT_MAMMOTH_TRANSPORT: { Caerleon: { s: 2000000, sd: at, b: 0, bd: 0 } }
+  }, hist: {} };
+  const s = S({ buyMode: 'instant' });
+  const rows = [{ id: 'T4_ORE', buy: 100 }, { id: 'T3_METALBAR', buy: 50 }];
+  const t = C.cityTotals(rows, s, m, now);
+  // Lymhurst has both: 100*95 + 50*40; Thetford has both: 100*100 + 50*50; Martlock lacks bars
+  assert.deepEqual(t.slice(0, 3).map(x => [x.city, x.cost, x.missing.length]), [['Lymhurst', 11500, 0], ['Thetford', 12500, 0], ['Martlock', 8000, 1]]);
+  assert.equal(C.cityTotals(rows, S({ overrides: { T3_METALBAR: 10 } }), m, now)[0].cost, 100 * 80 + 50 * 10); // own price kept; Martlock now complete
+  // weights come from the game data
+  assert.ok(C.weightOf(data, 'T4_METALBAR') > 0);
+  assert.equal(C.weightOf(data, 'T4_METALBAR_LEVEL1@1'), C.weightOf(data, 'T4_METALBAR_LEVEL1'));
+  near(C.loadKg(data, [['T4_METALBAR', 10], ['T5_PLANKS', 2]]), 10 * C.weightOf(data, 'T4_METALBAR') + 2 * C.weightOf(data, 'T5_PLANKS'));
+  // mounts: published carry weights, and the right picks for a load
+  const kg = id => data.mounts.find(x => x.id === id).kg;
+  assert.equal(kg('T8_MOUNT_OX'), 3200);
+  assert.ok(Math.abs(kg('T8_MOUNT_MAMMOTH_TRANSPORT') - 22521) <= 2);
+  const o = C.mountOptions(data, m, s, 1500, now);
+  assert.equal(o.fits.id, 'T6_MOUNT_OX');                  // 1,578 kg is enough and cheapest
+  assert.equal(o.fits.city, 'Lymhurst');
+  assert.equal(o.value.id, 'T8_MOUNT_MAMMOTH_TRANSPORT');  // 2,000,000 / 22,520 kg is the least per kg
+  assert.equal(o.list.find(x => x.id === 'T8_MOUNT_OX').trips, 1);
+  assert.equal(C.mountOptions(data, m, s, 5000, now).fits.id, 'T8_MOUNT_MAMMOTH_TRANSPORT');
+  assert.equal(C.mountOptions(data, m, s, 5000, now).list.find(x => x.id === 'T6_MOUNT_OX').trips, 4);
+});
+
+test('calculator', () => {
+  const v = t => K.evaluate(t);
+  assert.equal(v('1250*48'), 60000);
+  assert.equal(v('1,250 × 48 − 2,000'), 58000);
+  assert.equal(v('2+3*4'), 14);
+  assert.equal(v('(2+3)*4'), 20);
+  assert.equal(v('1.5m / 3'), 500000);
+  assert.equal(v('250k + 1k'), 251000);
+  assert.equal(v('48000 - 6.5%'), 44880);     // takes 6.5% off
+  assert.equal(v('1000 + 10%'), 1100);
+  assert.equal(v('200 * 4%'), 8);
+  assert.equal(v('-5 + 2'), -3);
+  assert.equal(v('10 ÷ 4'), 2.5);
+  assert.equal(v(''), null);
+  assert.throws(() => v('2 +'));
+  assert.throws(() => v('(2'));
+  assert.throws(() => v('alert(1)'));
+  assert.equal(K.format(1234567.891), '1,234,567.89');
 });

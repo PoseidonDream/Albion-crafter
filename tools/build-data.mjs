@@ -2,13 +2,14 @@
 // Builds data/items.json from the game's own item dumps (github.com/ao-data/ao-bin-dumps).
 //
 //   node tools/build-data.mjs              download the latest dumps and rebuild
-//   node tools/build-data.mjs --from DIR   use items.json, formatted_items.json and
-//                                          craftingmodifiers.json already saved in DIR
+//   node tools/build-data.mjs --from DIR   use items.json, formatted_items.json,
+//                                          craftingmodifiers.json and spells.json already saved in DIR
 //
 // The output lists every item that can be crafted or refined at a station: all tiers and
 // enchantment levels, their resources, focus cost, how many come out per craft, which
 // resources are never returned, the item value (for station fees), the city bonuses, and
-// which Destiny Board mastery and specialization each item belongs to.
+// which Destiny Board mastery and specialization each item belongs to. It also keeps each item's
+// weight and how much each transport mount carries, for planning hauls between cities.
 
 import { readFile, writeFile, mkdir } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
@@ -16,14 +17,14 @@ import { fileURLToPath } from 'node:url';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const DUMPS = 'https://raw.githubusercontent.com/ao-data/ao-bin-dumps/master/';
-const SOURCES = { items: 'items.json', names: 'formatted/items.json', mods: 'craftingmodifiers.json' };
+const SOURCES = { items: 'items.json', names: 'formatted/items.json', mods: 'craftingmodifiers.json', spells: 'spells.json' };
 
 async function load() {
   const i = process.argv.indexOf('--from');
   if (i > 0) {
     const dir = process.argv[i + 1];
     const read = async f => JSON.parse(await readFile(join(dir, f), 'utf8'));
-    return { items: await read('items.json'), names: await read('formatted_items.json'), mods: await read('craftingmodifiers.json') };
+    return { items: await read('items.json'), names: await read('formatted_items.json'), mods: await read('craftingmodifiers.json'), spells: await read('spells.json') };
   }
   const out = {};
   for (const [k, f] of Object.entries(SOURCES)) {
@@ -139,7 +140,7 @@ function pickRecipe(list) {
 }
 
 async function main() {
-  const { items, names, mods } = await load();
+  const { items, names, mods, spells } = await load();
   const all = {};
   for (const [kind, list] of Object.entries(items.items)) {
     if (!Array.isArray(list)) continue;
@@ -217,8 +218,15 @@ async function main() {
   out.sort((a, b) => (a.c < b.c ? -1 : a.c > b.c ? 1 : a.s < b.s ? -1 : a.s > b.s ? 1 : a.t - b.t || a.e - b.e));
 
   for (const x of out) if (x.j) { used.add(x.j[0] + '_EMPTY'); used.add(x.j[0] + '_FULL'); }
-  const nameMap = {};
-  for (const id of [...used].sort()) nameMap[id.replace(/@\d$/, '')] = en[id] || en[id.replace(/@\d$/, '')] || id;
+  const mounts = transportMounts(items, spells, en);
+  for (const x of mounts) used.add(x.id);
+  const nameMap = {}, weights = {};
+  for (const id of [...used].sort()) {
+    const base = id.replace(/@\d$/, '');
+    nameMap[base] = en[id] || en[base] || id;
+    const w = all[base] && +all[base].it['@weight'];
+    if (w > 0) weights[base] = w;
+  }
 
   const cities = {};
   for (const loc of arr(mods.craftingmodifiers.craftinglocation)) {
@@ -233,15 +241,40 @@ async function main() {
     generated: new Date().toISOString().slice(0, 10),
     source: 'github.com/ao-data/ao-bin-dumps',
     groups: GROUPS.map(([key, name, cats]) => ({ key, name, cats: cats.map(([k, n]) => ({ key: k, name: n })) })),
-    lines: LINES, specs: specNames, cities, names: nameMap, items: out
+    lines: LINES, specs: specNames, cities, names: nameMap, weights, mounts, items: out
   };
   await mkdir(join(ROOT, 'data'), { recursive: true });
   const json = JSON.stringify(data);
   await writeFile(join(ROOT, 'data', 'items.json'), json);
   const per = {};
   for (const x of out) per[x.c] = (per[x.c] || 0) + 1;
-  console.log(`${out.length} craftable items, ${Object.keys(nameMap).length} names, ${(json.length / 1024).toFixed(0)} KB`);
+  console.log(`${out.length} craftable items, ${Object.keys(nameMap).length} names, ${mounts.length} transport mounts, ${(json.length / 1024).toFixed(0)} KB`);
   console.log(per);
+}
+
+// Mounts that haul: how many kg each carries and how fast it walks. The game keeps a load value on
+// each mount's half-mounted buff; that value x the mount's weight x LOAD_FACTOR is the carry weight
+// the game shows (Elder's Transport Ox 3,200 kg, Transport Mammoth 22,521 kg).
+const LOAD_FACTOR = 1.6537;
+function transportMounts(items, spells, en) {
+  const buff = {};
+  for (const kind of ['activespell', 'passivespell', 'togglespell']) {
+    for (const sp of arr(spells.spells[kind])) {
+      const b = {};
+      for (const x of [...arr(sp.buffovertime), ...arr(sp.buff)]) if (x && x['@type']) b[x['@type']] = +x['@value'];
+      buff[sp['@uniquename']] = b;
+    }
+  }
+  const list = [];
+  for (const m of arr(items.items.mount)) {
+    const id = m['@uniquename'];
+    if (!(id in en) || /^UNIQUE|BATTLE|SIEGE|CHARIOT|_ADC$/.test(id)) continue;
+    const load = (buff[m['@halfmountedbuff']] || {}).maxload || (buff[m['@mountedbuff']] || {}).maxload || 0;
+    const kg = Math.round(load * +m['@weight'] * LOAD_FACTOR);
+    if (kg < 300) continue;
+    list.push({ id, t: +m['@tier'] || 0, kg, sp: Math.round(((buff[m['@mountedbuff']] || {}).movespeedbonus || 0) * 100) });
+  }
+  return list.sort((a, b) => a.kg - b.kg);
 }
 
 const REFINE_TIER = { T4: 'Adept', T5: 'Expert', T6: 'Master', T7: 'Grandmaster', T8: 'Elder' };

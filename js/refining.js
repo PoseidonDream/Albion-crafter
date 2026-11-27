@@ -1,8 +1,9 @@
 // Refining planner: one resource at a time, every tier and enchantment, with live prices.
-import * as C from './calc.js';
+import * as C from './calc.js?v=4'; // ?v: a cached older copy can't be mixed in
 import * as M from './market.js';
 import * as P from './profile.js';
 import * as L from './levels.js';
+import * as H from './haul.js?v=4';
 
 /* ---------- helpers ---------- */
 const $ = id => document.getElementById(id);
@@ -36,6 +37,7 @@ const write = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } ca
 
 let D = null, shared = null, own = null, MK = null, loading = null;
 let fillValue = 100; // last quick-fill level
+let haulKg = null;   // a load typed into the mount picker, instead of the batch's
 let items = [];
 const byId = new Map();
 const resCity = {};
@@ -54,7 +56,7 @@ function settings(extra = {}) {
   return {
     ...C.DEFAULTS, maxAge: shared.maxAge ?? C.DEFAULTS.maxAge, premium: shared.premium, focus: shared.focus,
     levels: shared.levels, fce: shared.fce, overrides: shared.overrides,
-    craftCity: 'auto', buyCity: own.buyWhere === 'cheapest' ? 'cheapest' : 'craft', sellCity: own.sellWhere === 'best' ? 'best' : 'craft',
+    craftCity: 'auto', buyCity: own.buyWhere === 'cheapest' ? 'cheapest' : C.MARKETS.includes(own.buyWhere) ? own.buyWhere : 'craft', sellCity: own.sellWhere === 'best' ? 'best' : 'craft',
     sellBasis: own.sellBasis, buyMode: own.buyMode, daily: +own.daily || 0, stationFee: +own.fee || 0, journals: false, ...extra
   };
 }
@@ -91,13 +93,14 @@ async function fetchPrices(force) {
   if (loading) loading.abort();
   const ctl = new AbortController();
   loading = ctl;
-  const ids = new Set();
-  for (const it of items) { ids.add(it.id); for (const [r] of it.r) ids.add(r); }
+  const ids = new Set(), hist = new Set();
+  for (const it of items) { ids.add(it.id); hist.add(it.id); for (const [r] of it.r) { ids.add(r); hist.add(r); } }
+  for (const x of D.mounts || []) ids.add(x.id); // for the mount picker
   const server = shared.server;
   $('refresh').disabled = true;
   try {
     const r = await M.update(server, MK, {
-      priceIds: [...ids], histIds: items.map(i => i.id), force, signal: ctl.signal,
+      priceIds: [...ids], histIds: [...hist], force, signal: ctl.signal,
       onProgress: (done, total) => {
         if (!total) return;
         $('progress').hidden = false; $('progressBar').style.width = (100 * done / total) + '%';
@@ -148,6 +151,9 @@ function wire() {
       if (pick.closest('#focusPlan')) $('detail').scrollIntoView({ behavior: 'smooth', block: 'start' });
       return;
     }
+    const one = e.target.closest('[data-onecity]');
+    if (one) { own.buyWhere = one.dataset.onecity; saveOwn(); render(); return; }
+    if (e.target.closest('[data-haulreset]')) { haulKg = null; render(true); return; }
     if (e.target.closest('[data-maxfocus]')) {
       const it = byId.get(own.sel), ev = C.evaluate(it, settings(), MK, D);
       own.N = C.focusCrafts(ev, settings()); own.useFocus = true; saveOwn(); render();
@@ -179,6 +185,7 @@ function quickFill(kind) {
 function onDetailInput(ev) {
   const el = ev.target, it = byId.get(own.sel);
   if (!it || !el.matches('input')) return;
+  if (el.dataset.haulkg != null) { const v = +el.value; haulKg = v > 0 ? v : null; render(true); return; }
   if (el.dataset.ov != null) {
     const v = +el.value;
     if (v > 0) shared.overrides[el.dataset.ov] = v; else delete shared.overrides[el.dataset.ov];
@@ -235,6 +242,9 @@ function render(detailOnly) {
 function renderControls() {
   $('server').value = shared.server;
   $('tabs').innerHTML = RESOURCES.map(r => `<button type="button" class="tab" role="tab" data-res="${r.key}" aria-selected="${own.res === r.key}"><b>${r.name}</b><small>${esc(resCity[r.key])} +40%</small></button>`).join('');
+  const buySeg = document.querySelector('.seg[data-key="buyWhere"]');
+  buySeg.querySelectorAll('[data-onecityseg]').forEach(b => b.remove());
+  if (C.MARKETS.includes(own.buyWhere)) buySeg.insertAdjacentHTML('beforeend', `<button type="button" data-v="${esc(own.buyWhere)}" data-onecityseg>Only ${esc(own.buyWhere)}</button>`);
   document.querySelectorAll('.seg[data-key]').forEach(seg => {
     seg.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', String(own[seg.dataset.key]) === b.dataset.v));
   });
@@ -293,7 +303,6 @@ function renderDetail(it, s) {
   const city = resCity[resOf(it)];
   const name = nameOf(it.id);
   const recipe = it.r.map(([id, q]) => `${q} × ${esc(nameOf(id))}`).join(' + ');
-  const P = MK.prices, H = MK.hist[it.id] || {};
 
   // Price table: every kind of price in every city, labeled
   const usingBuy = own.buyMode === 'order' ? 'buyorder' : 'listing';
@@ -305,10 +314,16 @@ function renderDetail(it, s) {
     return `<span class="rl${used ? ' used' : ''}">${label}${used ? ' \u2713' : ''}</span>` +
       vals.map(v => `<span class="pc${v.x && v.x.p === best ? ' best' : ''}${v.c === city ? ' home' : ''}" title="${esc(v.c)}${v.x && v.x.at ? ', ' + ago(v.x.at) + ' old' : ''}">${v.x ? fmt(v.x.p) : '\u2014'}</span>`).join('');
   };
-  const nmCell = (id, sub) => `<div class="nm" style="grid-row:span 2"><b>${esc(nameOf(id))}</b><small>${sub}</small>
+  const vol = id => {
+    const vals = C.MARKETS.map(c => (MK.hist[id] || {})[c] || null);
+    const top = Math.max(0, ...vals.map(h => (h ? h.n : 0)));
+    return '<span class="rl" title="How many sold a day on average over the last 7 days">Sold / day</span>' +
+      vals.map((h, i) => `<span class="pc vol${h && h.n === top && top > 0 ? ' best' : ''}${C.MARKETS[i] === city ? ' home' : ''}" title="${esc(C.MARKETS[i])}${h ? ': ' + fmt1(h.n) + ' sold a day' : ''}">${h ? fmt1(h.n) : '\u2014'}</span>`).join('');
+  };
+  const nmCell = (id, sub) => `<div class="nm" style="grid-row:span 3"><b>${esc(nameOf(id))}</b><small>${sub}</small>
     <input type="number" min="0" step="1" inputmode="numeric" data-ov="${esc(id)}" value="${shared.overrides[id] || ''}" placeholder="your own price" aria-label="Your own price for ${esc(nameOf(id))}"></div>`;
-  const gridHtml = head + it.r.map(([id, q]) => nmCell(id, `${q} per refine`) + row(id, 'listing', 'Buy now', usingBuy === 'listing') + row(id, 'buyorder', 'Buy order', usingBuy === 'buyorder')).join('<span class="sep thin"></span>') +
-    '<span class="sep"></span>' + nmCell(it.id, 'what you make') + row(it.id, 'listing', 'Sell order', own.sellBasis === 'listing', true) + row(it.id, 'buyorder', 'Sell now', own.sellBasis === 'buyorder', true);
+  const gridHtml = head + it.r.map(([id, q]) => nmCell(id, `${q} per refine`) + row(id, 'listing', 'Buy now', usingBuy === 'listing') + row(id, 'buyorder', 'Buy order', usingBuy === 'buyorder') + vol(id)).join('<span class="sep thin"></span>') +
+    '<span class="sep"></span>' + nmCell(it.id, 'what you make') + row(it.id, 'listing', 'Sell order', own.sellBasis === 'listing', true) + row(it.id, 'buyorder', 'Sell now', own.sellBasis === 'buyorder', true) + vol(it.id);
   let local = 0, cheap = 0;
   for (const [id, q] of it.r) {
     const l = C.resourceUnit(MK, id, city, s), c = C.resourceUnit(MK, id, 'cheapest', s);
@@ -339,6 +354,15 @@ function renderDetail(it, s) {
   const sellAt = e.sale ? e.sale.city : city;
   const days = ok(e.perDay) && e.perDay > 0 ? b.items / e.perDay : null;
 
+  // Buying everything in one city, and carrying it
+  const buyCitySet = new Set(b.rows.filter(r => r.unit && C.MARKETS.includes(r.unit.city)).map(r => r.unit.city));
+  const oneCity = H.oneCityTable({ rows: b.rows, s, m: MK, home: city, profit: e.priced ? b.profit : null, mat: b.mat,
+    chosen: buyCitySet.size === 1 ? [...buyCitySet][0] : null, name: nameOf });
+  const matKg = C.loadKg(D, b.rows.map(r => [r.id, r.buy]));
+  const farKg = C.loadKg(D, b.rows.filter(r => r.unit && C.MARKETS.includes(r.unit.city) && r.unit.city !== city).map(r => [r.id, r.buy]));
+  const haul = H.mountSection({ data: D, m: MK, s, kg: matKg, far: farKg, home: city, kgOverride: haulKg,
+    products: { kg: C.weightOf(D, it.id) * b.items, to: sellAt !== city ? sellAt : null } });
+
   // Levels
   const lv = shared.levels[it.l] || {}, calKey = it.l + '|' + it.s;
   const tiers = L.specsOf(D, it.l).sort();
@@ -346,7 +370,7 @@ function renderDetail(it, s) {
   // Keep the cursor in the input being typed in across the re-render
   const act = document.activeElement;
   const keep = act && act.closest && act.closest('#detail') && act.matches('input')
-    ? (act.id ? '#' + act.id : act.dataset.ov != null ? `[data-ov="${act.dataset.ov}"]` : act.dataset.lv != null ? `[data-lv="${act.dataset.lv}"]` : act.dataset.cal != null ? '[data-cal]' : null) : null;
+    ? (act.id ? '#' + act.id : act.dataset.ov != null ? `[data-ov="${act.dataset.ov}"]` : act.dataset.lv != null ? `[data-lv="${act.dataset.lv}"]` : act.dataset.cal != null ? '[data-cal]' : act.dataset.haulkg != null ? '[data-haulkg]' : null) : null;
   $('detail').innerHTML = `
     <div class="card-head">
       <h2 id="d-h">${esc(name)} ${tag(it)}</h2>
@@ -384,6 +408,18 @@ function renderDetail(it, s) {
         <div class="kv big"><span>Profit</span><span class="mono ${cls(e.priced ? b.profit : null)}">${e.priced ? fmtS(b.profit) : '—'}</span></div>
         <div class="kv"><span>Focus used</span><span class="mono">${b.focusUsed ? fmt(b.focusUsed) + ' of ' + fmt(shared.focus) : 'none'}</span></div>
         ${days ? `<div class="kv"><span>Days to sell at the current pace</span><span class="mono${days > 3 ? ' neg' : ''}">${fmt1(days)}</span></div>` : ''}
+      </div>
+    </div>
+
+    <div class="split" style="grid-template-columns:repeat(auto-fit,minmax(340px,1fr))">
+      <div class="card" style="padding:0">
+        <h3 style="font-size:13px">Buy everything in one city</h3>
+        <p class="note">All materials for ${fmt(own.N)} ${esc(name)} from one market, then carry them to ${esc(city)}. Click a city to plan with it.</p>
+        ${oneCity}
+      </div>
+      <div class="card" style="padding:0">
+        <h3 style="font-size:13px">Carry it: which mount</h3>
+        ${haul}
       </div>
     </div>
 

@@ -29,9 +29,16 @@ and how many sell a day. Each item is crafted in its bonus city unless you pick 
 - **Your trip** as numbered stops: what to buy (or which buy orders to place) in each city, where to craft, where to sell,
   empty and full journals, what you spend and get, and how much buying on the way earns compared with buying everything
   in the craft city. Below it, the same trip with fewer or more stops.
+- **Buy everything in one city**: what all the materials cost if you buy them in a single market, for every city,
+  with the profit that gives and which cities are missing a material. Click a city to plan the trip with it.
+- **Carry it: which mount**: how much the materials weigh and the cheapest mount that carries them in one trip, plus the
+  mount with the least silver per kg (the Transport Mammoth carries 22,520 kg but costs the most; a Transport Ox or a
+  Winter Bear is often enough). Every hauling mount is listed with its carry weight, cheapest price and trips needed.
+  Type another weight to plan a bigger haul.
 - **Prices in every city**: for each material, its **Buy now** price (cheapest seller) and **Buy order** price
-  (highest bid); for the item, its **Sell order**, **Sell now** and 7-day **Sold for** prices. Green is the best in
-  each row and ✓ marks the kind of price being used. Click any price to buy or sell there; the trip and profit update.
+  (highest bid); for the item, its **Sell order**, **Sell now** and 7-day **Sold for** prices, and for both, how many
+  **sold per day** in each city. Green is the best in each row and ✓ marks the kind of price being used. Click any price
+  to buy or sell there; the trip and profit update.
   *What do these prices mean?* under the table explains each term. Type a price in *your own price* for materials you
   gathered yourself.
 - **Your levels**: mastery and specialization levels for focus cost, or the focus cost the game shows, to match it exactly.
@@ -42,6 +49,11 @@ station fee, your focus, the maximum price age and Premium. Everything is saved 
 
 **Prices not loading?** at the bottom gives the direct API links and a box to paste their output, in case your network
 blocks the API.
+
+**Calculator**: a calculator sits on the right of every page (on smaller screens, behind the Calculator button).
+Type or tap a sum: `1250 × 48`, `1.5m / 3`, `250k + 10%`, or `48000 − 6.5%` to take a percentage off. The −4%, −6.5%
+and −10.5% buttons take off the market tax and fees (sell now, sell order with Premium, sell order without).
+It keeps your last results.
 
 ## Your levels
 
@@ -81,6 +93,9 @@ Opening it asks first, then fills those masteries in for that character in your 
 - **Best use of your focus** ranks every refine across all five resources by silver per focus point.
 - For the selected tier: every city's price for the raw resource, the previous tier's refined resource and the product,
   profit with and without focus and on bonus days, and a batch plan that says which buy orders to place in which city.
+- **Buy everything in one city** and **Carry it: which mount**, as on the crafting page; clicking a city sets
+  *Buy in* to that city only.
+- How many of each material and product sold per day in every city.
 - Defaults follow the usual refining routine: buy with buy orders, station fee 400 per 100 nutrition.
 
 ## Laborer journals
@@ -100,6 +115,8 @@ share of a journal × (full journal price after tax − empty journal price) to 
 | Focus efficiency | 30 × mastery + 250 × the item's own specialization + 30 (potions: 18) × every specialization level in the same mastery. Refining has no mastery level, only its T4–T8 nodes |
 | Station fee | item value × 0.1125 nutrition × fee per 100 nutrition ÷ 100 |
 | Market tax | 4% with Premium, 8% without; placing an order adds 2.5% |
+| Mount carry weight | load value on the mount's half-mounted buff × mount weight × 1.6537, from the game files (matches the in-game 3,200 kg for the Elder's Transport Ox and 22,521 kg for the Transport Mammoth) |
+| Load | item weight from the game files × how many you buy |
 | Profit per craft | items × price after tax − resources used after returns − station fee |
 
 Artifacts, hearts, Avalonian energy, capes, crests, rare potion ingredients and farm animals are never returned,
@@ -133,9 +150,11 @@ js/market.js          Albion Online Data Project client, cache, paste fallback
 js/app.js             crafting page interface
 js/refining.js        refining page interface
 js/profile.js         characters saved in the browser
-js/levels.js          quick fill for Destiny Board levels
+js/levels.js          quick fill for Destiny Board levels, levels links
+js/haul.js            buy everything in one city, mount picker
+js/calcpad.js         the calculator on the right
 js/profile-page.js    your levels page
-data/items.json       recipes, names and city bonuses, generated
+data/items.json       recipes, names, weights, mounts and city bonuses, generated
 tools/build-data.mjs  rebuilds data/items.json from the game's data files
 tools/test-calc.mjs   tests for the math
 ```
