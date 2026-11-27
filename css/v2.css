@@ -215,3 +215,53 @@ textarea{width:100%;font-family:var(--mono);font-size:12px;border:1px solid var(
   .tab{flex:none}
   .bench-head h2{font-size:19px}
 }
+
+/* ---------- your levels page ---------- */
+.welcome{background:var(--sel);border:1px solid #b8dcec;border-radius:10px;padding:16px 18px;display:grid;gap:10px}
+.welcome h1{font-size:22px}
+.welcome p{margin:0;max-width:80ch}
+a.btn{text-decoration:none;display:inline-flex;align-items:center}
+.groups{display:grid;gap:10px}
+.grp > summary{cursor:pointer;list-style:none;display:flex;justify-content:space-between;align-items:center;gap:10px;padding:14px 16px;min-height:52px}
+.grp > summary::-webkit-details-marker{display:none}
+.grp > summary::after{content:"\25BE";color:var(--muted)}
+.grp[open] > summary::after{content:"\25B4"}
+.grp-name{font-family:var(--head);font-weight:600;font-size:17px}
+.grp-count{margin-left:auto;color:var(--muted);font-size:13px}
+.grp-body{display:grid;gap:10px;padding:0 16px 16px}
+.fillrow{padding:8px 12px;background:var(--panel2);border-radius:8px}
+.line-card{border:1px solid var(--line);border-radius:10px;padding:12px 14px;display:grid;gap:10px}
+.line-head{display:flex;justify-content:space-between;align-items:center;gap:8px 14px;flex-wrap:wrap}
+.line-head h3{font-size:15px}
+.line-head input{width:70px}
+.spec-grid2{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px}
+.spec-cell{display:grid;gap:3px;font-size:13px}
+.spec-cell span{font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.spec-cell input{width:100%}
+.spec-cell small{color:var(--muted);font-size:11.5px}
+.spec-cell.mastery span{color:var(--accent);font-weight:600}
+.spec-cell.hit span{color:var(--accent)}
+
+/* ---------- labeled market table ---------- */
+.mkt{display:grid;grid-template-columns:minmax(140px,1.2fr) 86px repeat(8,minmax(66px,1fr));gap:4px;align-items:stretch;min-width:860px}
+.mkt .pcb,.mkt .pc{font-size:12px}
+.mkt .h{color:var(--muted);font-size:11px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;text-align:right;align-self:end}
+.mkt .h:first-child,.mkt .h:nth-child(2){text-align:left}
+.mkt .nm{display:flex;flex-direction:column;justify-content:center;gap:3px;min-width:0;padding-right:6px}
+.mkt .nm b{font-weight:600}
+.mkt .nm small{color:var(--muted);font-size:12px}
+.mkt .nm input{width:100%;max-width:150px;min-height:32px;padding:4px 8px;font-size:12.5px}
+.mkt .rl{display:flex;align-items:center;font-size:12.5px;color:var(--muted);font-weight:500;white-space:nowrap}
+.mkt .rl.used{color:var(--accent);font-weight:700}
+.mkt .pcb{min-height:38px}
+.mkt .sep{grid-column:1 / -1;border-top:1px solid var(--line2);margin:6px 0}
+.mkt .sep.thin{margin:2px 0;border-top-style:dashed}
+.summary{margin:0;font-size:15.5px;line-height:1.5;padding:10px 12px;background:var(--panel2);border-radius:8px}
+details.help{border:1px solid var(--line);border-radius:8px;padding:0 12px}
+details.help > summary{cursor:pointer;font-weight:600;color:var(--accent);min-height:40px;display:flex;align-items:center}
+details.help dl{display:grid;grid-template-columns:max-content 1fr;gap:6px 14px;margin:0 0 12px}
+details.help dt{font-weight:700}
+details.help dd{margin:0;color:var(--soft)}
+@media (max-width:640px){details.help dl{grid-template-columns:1fr}details.help dd{margin-bottom:6px}}
+.mkt7{grid-template-columns:minmax(140px,1.2fr) 86px repeat(7,minmax(66px,1fr));min-width:780px}
+.mkt .pc{display:flex;align-items:center;justify-content:flex-end;min-height:36px}

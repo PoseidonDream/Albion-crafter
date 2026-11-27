@@ -295,23 +295,20 @@ function renderDetail(it, s) {
   const recipe = it.r.map(([id, q]) => `${q} × ${esc(nameOf(id))}`).join(' + ');
   const P = MK.prices, H = MK.hist[it.id] || {};
 
-  // Price grid: each ingredient and the product in every city
-  const head = `<span class="h">Item</span><span class="h">Need</span><span class="h">Your price</span>` + C.MARKETS.map(c => `<span class="h">${esc(c)}</span>`).join('');
-  const priceRow = (id, qty, isProduct) => {
-    const q = P[id] || {};
-    const vals = C.MARKETS.map(c => {
-      const p = q[c] || {};
-      const useBuyOrder = isProduct ? own.sellBasis === 'buyorder' : own.buyMode === 'order';
-      let v = useBuyOrder ? p.b : p.s, at = useBuyOrder ? p.bd : p.sd;
-      if (!isProduct && useBuyOrder && !v) { v = p.s; at = p.sd; }
-      return { c, v, at };
-    });
-    const have = vals.filter(x => x.v > 0).map(x => x.v);
-    const best = have.length ? (isProduct ? Math.max(...have) : Math.min(...have)) : 0;
-    return `<span>${esc(nameOf(id))}${isProduct ? ' <span class="muted">(sell)</span>' : ''}</span><span class="mono soft" style="text-align:right">${isProduct ? '' : qty}</span>
-      <input type="number" min="0" step="1" inputmode="numeric" data-ov="${esc(id)}" value="${shared.overrides[id] || ''}" placeholder="market" aria-label="Your price for ${esc(nameOf(id))}">` +
-      vals.map(x => `<span class="pc${x.v && x.v === best ? ' best' : ''}${x.c === city ? ' home' : ''}">${x.v ? fmt(x.v) : '—'}<small>${x.v ? ago(x.at) : ''}</small></span>`).join('');
+  // Price table: every kind of price in every city, labeled
+  const usingBuy = own.buyMode === 'order' ? 'buyorder' : 'listing';
+  const plainS = { ...s, overrides: {} };
+  const head = `<span class="h">Item</span><span class="h">Price</span>` + C.MARKETS.map(c => `<span class="h">${esc(c)}</span>`).join('');
+  const row = (id, kind, label, used, sell) => {
+    const vals = C.MARKETS.map(c => ({ c, x: C.marketPrice(MK, id, c, kind, plainS) }));
+    const have = vals.filter(v => v.x).map(v => v.x.p), best = have.length ? (sell ? Math.max(...have) : Math.min(...have)) : 0;
+    return `<span class="rl${used ? ' used' : ''}">${label}${used ? ' \u2713' : ''}</span>` +
+      vals.map(v => `<span class="pc${v.x && v.x.p === best ? ' best' : ''}${v.c === city ? ' home' : ''}" title="${esc(v.c)}${v.x && v.x.at ? ', ' + ago(v.x.at) + ' old' : ''}">${v.x ? fmt(v.x.p) : '\u2014'}</span>`).join('');
   };
+  const nmCell = (id, sub) => `<div class="nm" style="grid-row:span 2"><b>${esc(nameOf(id))}</b><small>${sub}</small>
+    <input type="number" min="0" step="1" inputmode="numeric" data-ov="${esc(id)}" value="${shared.overrides[id] || ''}" placeholder="your own price" aria-label="Your own price for ${esc(nameOf(id))}"></div>`;
+  const gridHtml = head + it.r.map(([id, q]) => nmCell(id, `${q} per refine`) + row(id, 'listing', 'Buy now', usingBuy === 'listing') + row(id, 'buyorder', 'Buy order', usingBuy === 'buyorder')).join('<span class="sep thin"></span>') +
+    '<span class="sep"></span>' + nmCell(it.id, 'what you make') + row(it.id, 'listing', 'Sell order', own.sellBasis === 'listing', true) + row(it.id, 'buyorder', 'Sell now', own.sellBasis === 'buyorder', true);
   let local = 0, cheap = 0;
   for (const [id, q] of it.r) {
     const l = C.resourceUnit(MK, id, city, s), c = C.resourceUnit(MK, id, 'cheapest', s);
@@ -356,9 +353,17 @@ function renderDetail(it, s) {
       <span class="muted">${recipe} · refine in ${esc(city)} · ${fmt(e.fc)} focus each · station fee ${fmt1(e.fee)} each</span>
     </div>
 
-    <div class="scroll"><div class="grid7">${head}${it.r.map(([id, q]) => priceRow(id, q, false)).join('')}${priceRow(it.id, 1, true)}</div></div>
-    <p class="note">Green: cheapest to buy, best to sell. Outlined: ${esc(city)}. ${own.buyMode === 'order' ? 'Top buy order, or the lowest listing where there is none.' : 'Lowest listing.'}
+    <div class="scroll"><div class="mkt mkt7">${gridHtml}</div></div>
+    <p class="note">Green is the best price in each row. Outlined is ${esc(city)}, where you refine. \u2713 marks the price the calculator uses; change it with <b>How you buy</b> and <b>How you sell</b> above.
       ${saving > 1 ? `Buying in the cheapest cities instead of ${esc(city)} saves about <b class="pos">${fmt(saving)}</b> per 1,000.` : ''}</p>
+    <details class="help"><summary>What do these prices mean?</summary>
+      <dl>
+        <dt>Buy now</dt><dd>The cheapest price someone is selling for. You get it instantly.</dd>
+        <dt>Buy order</dt><dd>The highest price someone is offering. Post your own order at about this price and wait for sellers. Usually cheaper; adds a 2.5% fee.</dd>
+        <dt>Sell order</dt><dd>List at about the cheapest current price and wait for buyers. 2.5% fee plus tax.</dd>
+        <dt>Sell now</dt><dd>Sell instantly to the highest buy order. Tax only, usually less money.</dd>
+      </dl>
+    </details>
 
     <div class="split" style="grid-template-columns:repeat(auto-fit,minmax(340px,1fr))">
       <div class="card" style="padding:0">
@@ -394,6 +399,7 @@ function renderDetail(it, s) {
       <label>Mastery <input type="number" min="0" max="100" data-lv="m" value="${lv.m || ''}" placeholder="0"></label>
       ${tiers.map(t => `<label${t === it.s ? ' style="color:var(--accent)"' : ''}>${t} <input type="number" min="0" max="100" data-lv="${t}" value="${(lv.s || {})[t] || ''}" placeholder="0"></label>`).join('')}
       <label>Focus per ${esc(it.s)} refine in game <input type="number" min="1" data-cal value="${shared.fce[calKey] != null ? e.fc : ''}" placeholder="${e.fc}"></label>
+      <a href="profile.html">All your levels →</a>
     </div>` : ''}`;
   if (keep) { const el = $('detail').querySelector(keep); if (el) el.focus({ preventScroll: true }); }
 }

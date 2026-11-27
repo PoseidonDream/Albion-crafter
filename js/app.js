@@ -25,7 +25,8 @@ function ago(t) {
 const iconUrl = id => `https://render.albiononline.com/v1/item/${encodeURIComponent(id)}.png?size=80&quality=1`;
 const icon = (id, size = '') => `<img class="ic ${size}" src="${iconUrl(id)}" alt="" loading="lazy" decoding="async" onerror="this.style.visibility='hidden'">`;
 const tierTag = it => `<span class="tier">${it.t}.${it.e}</span>`;
-const STATUS = { profit: ['profit', 'Profit'], focus: ['focus', 'Focus only'], loss: ['loss', 'Loss'], nodata: ['nodata', 'No price'] };
+const STATUS = { profit: ['profit', 'Profitable'], focus: ['focus', 'Only with focus'], loss: ['loss', 'Loss'], nodata: ['nodata', 'No price'] };
+const STATUS_HELP = { profit: 'Makes money even without focus', focus: 'Only makes money if you spend focus', loss: 'Loses money at these prices', nodata: 'Some prices are missing' };
 
 /* ---------- state ---------- */
 const STORE = 'aoc.settings.v1';
@@ -96,7 +97,18 @@ function routeText(e) {
 }
 
 /* ---------- boot ---------- */
+// First visit with no levels anywhere: start on the Your levels page, once.
+function firstVisit() {
+  try {
+    if (localStorage.getItem('aoc.onboarded')) return false;
+    const saved = JSON.parse(localStorage.getItem(STORE) || '{}') || {};
+    if (Object.keys(saved.levels || {}).length || Object.keys(saved.fce || {}).length) { localStorage.setItem('aoc.onboarded', '1'); return false; }
+    return true;
+  } catch { return false; }
+}
+
 async function boot() {
+  if (firstVisit()) { location.replace('profile.html?welcome=1'); return; }
   try {
     const res = await fetch('data/items.json');
     if (!res.ok) throw new Error('HTTP ' + res.status);
@@ -319,7 +331,7 @@ function renderList() {
     const it = e.item, st = STATUS[e.status];
     return `<button type="button" class="rank" data-sel="${esc(it.id)}" aria-current="${it.id === S.sel}">
       ${icon(it.id)}
-      <span class="main"><span class="name">${esc(it.name)} ${tierTag(it)} <span class="tag ${st[0]}">${st[1]}</span></span>
+      <span class="main"><span class="name">${esc(it.name)} ${tierTag(it)} <span class="tag ${st[0]}" title="${STATUS_HELP[e.status]}">${st[1]}</span></span>
         <span class="sub">${esc(routeText(e))}${ok(e.perDay) ? ' · ' + fmt1(e.perDay) + '/day' : ''}</span></span>
       <span class="right"><span class="p ${cls(e.b.profit)}">${fmtS(e.b.profit)}</span><span class="pp">${fmtS(perCraft(e))} / craft</span></span>
     </button>`;
@@ -378,18 +390,21 @@ function renderBench() {
     const u = r.unit;
     if (!u) { add('No price yet', `${fmt(r.buy)} × ${nm(r.id)}`, null, 'buy'); continue; }
     if (u.how === 'free') continue;
-    add(u.how === 'manual' ? 'Your own stock' : u.city, `${u.how === 'order' ? 'Order' : 'Buy'} ${fmt(r.buy)} × ${nm(r.id)}`, r.total, 'buy');
+    const how = u.how === 'manual' ? 'Use your own' : u.how === 'order' ? 'Buy order' : 'Buy now';
+    const at = u.how === 'manual' ? '' : ` at ${fmt(u.how === 'order' ? u.u / 1.025 : u.u)}`;
+    add(u.how === 'manual' ? 'Your own stock' : u.city, `${how}: ${fmt(r.buy)} × ${nm(r.id)}${at}`, r.total, 'buy');
   }
   const jCount = Math.floor(b.journalCount + 1e-9);
   const craftKey = e.craftCity === 'custom' ? 'Your hideout' : e.craftCity;
   if (jOn && jCount > 0) add(home, `Buy ${jCount} empty ${journalName(j.id)}${jCount > 1 ? 's' : ''}`, jCount * j.empty.u, 'buy');
   add(craftKey, `Craft ${fmt(N)} × ${it.name}${b.Nf ? ` (${fmt(b.Nf)} with focus)` : ''}`, null, 'craft');
-  add(sellCity, `Sell ${fmt(b.items)}${e.sale ? ' at ' + fmt(e.sale.p) : ''}`, e.sale ? b.revenue : null, 'sell');
+  const sellHow = !e.sale ? 'Sell' : e.sale.basis === 'buyorder' ? 'Sell now' : e.sale.basis === 'listing' ? 'Sell order' : 'Sell';
+  add(sellCity, `${sellHow}: ${fmt(b.items)}${e.sale ? ' at ' + fmt(e.sale.p) : ''}`, e.sale ? b.revenue : null, 'sell');
   if (jOn && jCount > 0) add(sellCity === 'Black Market' ? home : sellCity, `Sell ${jCount} full journal${jCount > 1 ? 's' : ''}`, jCount * j.full.net, 'sell');
   const order = (c) => (c === 'Your own stock' ? 0 : c === 'No price yet' ? 1 : c === craftKey ? 3 : groups.get(c).every(l => l.kind === 'sell') ? 4 : 2);
   const stops = [...groups.keys()].sort((a, c) => order(a) - order(c)).map((c, i) => {
     const lines = groups.get(c), kinds = new Set(lines.map(l => l.kind));
-    const role = kinds.has('craft') ? (kinds.has('sell') ? 'Craft and sell' : 'Craft') : kinds.has('sell') && !kinds.has('buy') ? 'Sell' : c === 'Your own stock' ? 'Already have' : S.buyMode === 'order' ? 'Place buy orders' : 'Buy';
+    const role = kinds.has('craft') ? (kinds.has('sell') ? 'Craft and sell' : 'Craft') : kinds.has('sell') && !kinds.has('buy') ? 'Sell' : c === 'Your own stock' ? 'Already have' : 'Buy materials';
     return `<li class="stop${kinds.has('craft') ? ' home' : ''}"><div class="stop-h"><span class="dot">${i + 1}</span><span><b>${esc(c)}</b><small>${role}${kinds.has('craft') ? ` · +${bonus}% bonus` : ''}</small></span></div>
       ${lines.map(l => `<div class="ln"><span>${esc(l.text)}</span><span class="${l.kind === 'sell' ? 'pos' : 'muted'}">${l.silver != null ? fmt(l.silver) : l.kind === 'buy' ? '<span class="neg">no price</span>' : ''}</span></div>`).join('')}</li>`;
   }).join('');
@@ -399,38 +414,49 @@ function renderBench() {
   const anyPick = Object.keys(bench.picks).length > 0 || !!bench.sellPin;
   const local = trip(it, 0, null, bench.sellPin);
   const gain = b.profit - local.b.profit;
-  const cmp = [[0, `Buy everything in ${home}`], [1, 'Up to 1 extra city'], [2, 'Up to 2 extra cities'], [6, 'Anywhere']].map(([k, label]) => {
+  const cmp = [[0, `Buy everything in ${home}`], [1, 'Shop in 1 more city'], [2, 'Shop in 2 more cities'], [6, 'Shop in any city']].map(([k, label]) => {
     const ev = k === +S.extra && !anyPick ? e : trip(it, k, null, bench.sellPin);
     return `<button type="button" class="cmp-row${k === +S.extra ? ' cur' : ''}" data-extra="${k}" style="width:100%;border:none;border-top:1px solid var(--line2);background:transparent;text-align:left;cursor:pointer;min-height:40px">
       <span>${label}</span><span class="muted">${esc(routeText(ev))}</span><span class="${cls(ev.priced ? ev.b.profit : null)}" style="text-align:right">${ev.priced ? fmtS(ev.b.profit) : '<span class="muted">prices missing</span>'}</span></button>`;
   }).join('');
 
-  // Where to buy and sell: every market, click to choose
+  // Market prices: every city and every kind of price, labeled. Click a price to use it.
   const plain = { ...s, overrides: {} };
-  const head = `<span class="h">Resource</span><span class="h">Your price</span>` + C.SELL_MARKETS.map(c => `<span class="h">${c === 'Black Market' ? 'Black Mkt' : esc(c)}</span>`).join('');
-  const resRows = it.r.map(([id, qty, noReturn], i) => {
-    const prices = C.MARKETS.map(c => ({ c, u: C.resourceUnit(MK, id, c, plain) }));
-    const have = prices.filter(x => x.u).map(x => x.u.u), min = have.length ? Math.min(...have) : 0;
+  const ageOf = at => (at ? ', ' + ago(at) : '');
+  const mktHead = `<span class="h">Material</span><span class="h">Price</span>` + C.SELL_MARKETS.map(c => `<span class="h">${esc(c)}</span>`).join('');
+  const usingBuy = S.buyMode === 'order' ? 'buyorder' : 'listing';
+  const priceRow = (kind, label, cities, opts) => {
+    const vals = cities.map(c => ({ c, x: C.SELL_MARKETS.includes(c) && (opts.sell || c !== 'Black Market') ? C.marketPrice(MK, opts.id, c, kind, plain) : null }));
+    const have = vals.filter(v => v.x).map(v => v.x.p);
+    const best = have.length ? (opts.sell ? Math.max(...have) : Math.min(...have)) : 0;
+    return `<span class="rl${opts.used ? ' used' : ''}" title="${esc(opts.help)}">${label}${opts.used ? ' ✓' : ''}</span>` + vals.map(v => v.x
+      ? `<button type="button" class="pcb${v.x.p === best ? ' best' : ''}" ${opts.attr(v.c)} data-mode="${kind}" aria-pressed="${!!opts.used && v.c === opts.chosen}" title="${esc(v.c)}${ageOf(v.x.at)}" aria-label="${label} in ${esc(v.c)}: ${fmt(v.x.p)}">${fmt(v.x.p)}</button>`
+      : '<span class="pcb empty" aria-hidden="true">—</span>').join('');
+  };
+  const matRows = it.r.map(([id, qty, noReturn], i) => {
     const chosen = e.rows[i].unit && e.rows[i].unit.city;
-    const cells = prices.map(x => {
-      if (!x.u) return '<span class="pcb empty" aria-hidden="true">—</span>';
-      const best = x.u.u === min, more = Math.round(100 * (x.u.u / min - 1));
-      const note = best ? 'cheapest' : `+${more}%${x.c === home ? ' · craft' : ''}`;
-      return `<button type="button" class="pcb${best ? ' best' : ''}" data-pick="${esc(id)}" data-city="${esc(x.c)}" aria-pressed="${x.c === chosen}" title="${esc(x.c)}${x.u.at ? ', ' + ago(x.u.at) : ''}" aria-label="Buy ${esc(nm(id))} in ${esc(x.c)} for ${fmt(x.u.u)}">${fmt(x.u.u)}<small>${note}</small></button>`;
-    }).join('') + '<span class="pcb empty" aria-hidden="true"></span>';
-    return `<span class="nm"><b>${esc(nm(id))}${/@\d$/.test(id) ? ' <span class="tier">.' + id.slice(-1) + '</span>' : ''}</b><small>${qty} per craft · buy ${fmt(b.rows[i].buy)}${noReturn ? ' · never returned' : ''}</small></span>
-      <input type="number" min="0" step="1" inputmode="numeric" data-ov="${esc(id)}" value="${S.overrides[id] || ''}" placeholder="market" aria-label="Your price for ${esc(nm(id))}">${cells}`;
-  }).join('');
-  const sales = C.SELL_MARKETS.map(c => ({ c, x: C.salePrice(MK, it.id, c, plain) }));
-  const nets = sales.filter(y => y.x).map(y => y.x.net), top = nets.length ? Math.max(...nets) : 0;
-  const sellRow = `<span class="nm"><b>Sell ${esc(it.name)}</b><small>${S.sellBasis === 'average' ? '7-day average' : S.sellBasis === 'buyorder' ? 'top buy order' : 'lowest listing'}</small></span>
-    <input type="number" min="0" step="1" inputmode="numeric" data-ov="${esc(it.id)}" value="${S.overrides[it.id] || ''}" placeholder="market" aria-label="Your sell price">` +
-    sales.map(y => {
-      if (!y.x) return '<span class="pcb empty" aria-hidden="true">—</span>';
-      const best = y.x.net === top, note = best ? 'best' : `−${Math.round(100 * (1 - y.x.net / top))}%${y.c === e.craftCity ? ' · craft' : ''}`;
-      return `<button type="button" class="pcb${best ? ' best' : ''}" data-sellpin="${esc(y.c)}" aria-pressed="${!!e.sale && e.sale.city === y.c}" title="${esc(y.c)}${y.x.at ? ', ' + ago(y.x.at) : ''}" aria-label="Sell in ${esc(y.c)} for ${fmt(y.x.p)}">${fmt(y.x.p)}<small>${note}</small></button>`;
-    }).join('');
+    const o = { id, chosen, attr: c => `data-pick="${esc(id)}" data-city="${esc(c)}"` };
+    return `<div class="nm" style="grid-row:span 2"><b>${esc(nm(id))}${/@\d$/.test(id) ? ' <span class="tier">.' + id.slice(-1) + '</span>' : ''}</b>
+        <small>${qty} per craft · you need ${fmt(b.rows[i].buy)}${noReturn ? ' · never returned' : ''}</small>
+        <input type="number" min="0" step="1" inputmode="numeric" data-ov="${esc(id)}" value="${S.overrides[id] || ''}" placeholder="your own price" aria-label="Your own price for ${esc(nm(id))}"></div>` +
+      priceRow('listing', 'Buy now', C.SELL_MARKETS, { ...o, used: usingBuy === 'listing', help: 'Cheapest seller: you get it instantly' }) +
+      priceRow('buyorder', 'Buy order', C.SELL_MARKETS, { ...o, used: usingBuy === 'buyorder', help: 'Highest buy order: post yours at this price and wait' });
+  }).join('<span class="sep thin"></span>');
+  const saleKind = e.sale ? (e.sale.basis === 'manual' ? null : e.sale.basis) : null;
+  const so = { id: it.id, sell: true, chosen: e.sale && e.sale.city, attr: c => `data-sellpin="${esc(c)}"` };
+  const sellRows = `<div class="nm" style="grid-row:span 3"><b>Sell ${esc(it.name)}</b><small>${fmt(b.items)} to sell</small>
+      <input type="number" min="0" step="1" inputmode="numeric" data-ov="${esc(it.id)}" value="${S.overrides[it.id] || ''}" placeholder="your own price" aria-label="Your own sell price"></div>` +
+    priceRow('listing', 'Sell order', C.SELL_MARKETS, { ...so, used: saleKind === 'listing', help: 'List at the cheapest current price and wait for a buyer' }) +
+    priceRow('buyorder', 'Sell now', C.SELL_MARKETS, { ...so, used: saleKind === 'buyorder', help: 'Sell instantly to the highest buy order' }) +
+    priceRow('average', 'Sold for', C.SELL_MARKETS, { ...so, used: saleKind === 'average', help: 'Average price it actually sold for over 7 days' });
   const hist = (MK.hist[it.id] || {})[sellCity];
+  const modeSeg = (key, opts) => `<div class="seg" role="group">${opts.map(([v, t]) => `<button type="button" data-benchset="${key}" data-v="${v}" aria-pressed="${S[key] === v}">${t}</button>`).join('')}</div>`;
+
+  // One plain sentence for the whole plan
+  const buyCities = [...new Set(e.rows.filter(r => r.unit && C.MARKETS.includes(r.unit.city)).map(r => r.unit.city))];
+  const summary = e.priced
+    ? `Buy materials in ${buyCities.length ? buyCities.map(esc).join(' and ') : 'your own stock'}, craft ${fmt(N)} in ${esc(craftAt)}${sellCity === e.craftCity ? ' and sell there' : `, sell in ${esc(sellCity)}`}. <b class="${cls(b.profit)}">${b.profit >= 0 ? 'Profit' : 'Loss'} ${fmtS(b.profit)}</b> (${fmtS(b.profit / N)} each).`
+    : 'Some prices are missing, so the profit can’t be worked out yet. Press Refresh prices, or type your own price in the table below.';
 
   // Levels
   const lv = S.levels[it.l] || {}, line = D.lines[it.l] || { name: it.l }, calKey = it.l + '|' + it.s;
@@ -451,6 +477,7 @@ function renderBench() {
           <span class="muted">${esc(catName[it.c] || '')} · craft in ${esc(craftAt)} (+${bonus}%) · return ${pct(e.rN)}${e.fc ? `, with focus ${pct(e.rF)} · ${fmt(e.fc)} focus per craft` : ''}</span></div></div>
       <span class="tag ${st[0]}" style="font-size:13px;padding:3px 10px">${st[1]}</span>
     </div>
+    <p class="summary">${summary}</p>
 
     <section class="sec">
       <div class="sec-head"><h3>Every tier and enchantment</h3><span class="note">Profit per craft ${S.useFocus ? 'with' : 'without'} focus on this trip. Click one to switch.</span></div>
@@ -473,10 +500,24 @@ function renderBench() {
     </section>
 
     <section class="sec">
-      <div class="sec-head"><h3>Where to buy and sell</h3>
-        <span class="ctl">${anyPick ? '<button type="button" class="btn quiet" data-reset>Back to the best route</button>' : ''}<span class="note">Click a price to buy or sell there. Green: cheapest to buy, best to sell.</span></span></div>
-      <div class="scroll"><div class="pgrid">${head}${resRows}<span class="sep"></span>${sellRow}</div></div>
-      <p class="note">${S.buyMode === 'order' ? 'Top buy order plus the 2.5% setup fee, or the lowest listing where there is no order.' : 'Lowest listing.'}${hist && hist.avg ? ` In ${esc(sellCity)} it sold for ${fmt(hist.avg)} on average over 7 days, about ${fmt1(hist.n)} a day.` : ''}${e.fee ? ` Station fee ${fmt(e.fee)} per craft.` : ''}</p>
+      <div class="sec-head"><h3>Prices in every city</h3>
+        <span class="ctl">${anyPick ? '<button type="button" class="btn quiet" data-reset>Back to the best route</button>' : ''}<span class="note">Green is the best price in each row. Click a price to buy or sell there.</span></span></div>
+      <div class="ctl" style="flex-wrap:wrap;gap:8px 18px">
+        <span class="ctl"><span class="lbl">How you buy materials</span>${modeSeg('buyMode', [['instant', 'Buy now (instant)'], ['order', 'Buy order (wait, cheaper)']])}</span>
+        <span class="ctl"><span class="lbl">How you sell</span>${modeSeg('sellBasis', [['listing', 'Sell order (wait)'], ['buyorder', 'Sell now (instant)'], ['average', '7-day average']])}</span>
+      </div>
+      <div class="scroll"><div class="mkt">${mktHead}${matRows}<span class="sep"></span>${sellRows}</div></div>
+      <details class="help"><summary>What do these prices mean?</summary>
+        <dl>
+          <dt>Buy now</dt><dd>The cheapest price someone is selling for. You get the items instantly.</dd>
+          <dt>Buy order</dt><dd>The highest price someone is offering. Post your own order at about this price and wait for sellers. Usually cheaper; adds a 2.5% fee.</dd>
+          <dt>Sell order</dt><dd>List your items at about the cheapest current price and wait for buyers. 2.5% fee plus tax.</dd>
+          <dt>Sell now</dt><dd>Sell instantly to the highest buy order. Tax only, usually less money.</dd>
+          <dt>Sold for</dt><dd>What it actually sold for on average over the last 7 days.</dd>
+          <dt>✓</dt><dd>The kind of price the calculator is using. Switch it with the buttons above the table.</dd>
+        </dl>
+      </details>
+      <p class="note">${hist && hist.avg ? `About ${fmt1(hist.n)} sell a day in ${esc(sellCity)}. ` : ''}${e.fee ? `Station fee ${fmt(e.fee)} per craft. ` : ''}Tax ${S.premium ? '4% with Premium' : '8% without Premium'}.</p>
     </section>
 
     ${it.f ? `<details class="sec levels"${levelsOpen ? ' open' : ''}>
@@ -494,16 +535,24 @@ function renderBench() {
       </div>
       <div class="specs" style="margin-top:8px"><label>Focus per craft shown in game <input type="number" min="1" data-cal value="${S.fce[calKey] != null ? e.fc : ''}" placeholder="${e.fc}"></label>
         <span class="note">Type it to match the game exactly for every tier and enchantment of ${esc(D.specs[calKey] || it.name)}.</span></div>
+      <p class="note" style="margin-top:8px"><a href="profile.html">Enter all your levels on one page →</a></p>
     </details>` : ''}`;
   if (keep) { const el = $('bench').querySelector(keep); if (el) el.focus({ preventScroll: true }); }
 }
 
 function onBenchClick(ev) {
   const t = ev.target;
+  const setMode = (key, v) => { if (S[key] !== v) { S[key] = v; save(); writeSegs(); recompute(); return true; } return false; };
   const pick = t.closest('[data-pick]');
-  if (pick) { bench.picks = { ...bench.picks, [pick.dataset.pick]: pick.dataset.city }; renderBench(); return; }
+  if (pick) {
+    bench.picks = { ...bench.picks, [pick.dataset.pick]: pick.dataset.city };
+    if (!setMode('buyMode', pick.dataset.mode === 'buyorder' ? 'order' : 'instant')) renderBench();
+    return;
+  }
   const pin = t.closest('[data-sellpin]');
-  if (pin) { bench.sellPin = pin.dataset.sellpin; renderBench(); return; }
+  if (pin) { bench.sellPin = pin.dataset.sellpin; if (!setMode('sellBasis', pin.dataset.mode)) renderBench(); return; }
+  const bs = t.closest('[data-benchset]');
+  if (bs) { setMode(bs.dataset.benchset, bs.dataset.v); return; }
   if (t.closest('[data-reset]')) { bench.picks = {}; bench.sellPin = null; renderBench(); return; }
   const ex = t.closest('[data-extra]');
   if (ex) { S.extra = +ex.dataset.extra; bench.picks = {}; save(); writeSegs(); recompute(); return; }

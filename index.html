@@ -19,6 +19,7 @@
       <nav class="nav" aria-label="Pages">
         <a href="index.html" aria-current="page">Crafting</a>
         <a href="refining.html">Refining</a>
+        <a href="profile.html">Your levels</a>
       </nav>
     </div>
     <div class="bar-right">
@@ -47,19 +48,19 @@
       <div class="chips" id="enchants" role="group" aria-labelledby="enchLbl"></div>
     </div>
     <div class="field">
-      <span class="lbl" id="extraLbl">Cities to buy in, besides where you craft</span>
+      <span class="lbl" id="extraLbl">Shop for materials in</span>
       <div class="seg" data-key="extra" role="group" aria-labelledby="extraLbl">
-        <button type="button" data-v="0">None</button><button type="button" data-v="1">1 city</button><button type="button" data-v="2">2 cities</button><button type="button" data-v="6">Anywhere</button>
+        <button type="button" data-v="0">Craft city only</button><button type="button" data-v="1">+1 city</button><button type="button" data-v="2">+2 cities</button><button type="button" data-v="6">Any city</button>
       </div>
     </div>
     <div class="field">
       <span class="lbl" id="sellLbl">Sell in</span>
       <div class="seg" data-key="sellWhere" role="group" aria-labelledby="sellLbl">
-        <button type="button" data-v="craft">Craft city</button><button type="button" data-v="best">Best market</button>
+        <button type="button" data-v="craft">Craft city</button><button type="button" data-v="best">Best city</button>
       </div>
     </div>
     <div class="field">
-      <label class="lbl" for="crafts">Crafts per item</label>
+      <label class="lbl" for="crafts">How many to craft</label>
       <input type="number" id="crafts" min="1" step="1" inputmode="numeric">
     </div>
     <label class="check"><input type="checkbox" id="useFocus"><span>Use focus</span></label>
@@ -76,15 +77,15 @@
           <input type="number" id="customBonus" min="0" max="200" step="1" inputmode="decimal">
         </div>
         <div class="field">
-          <span class="lbl" id="buyModeLbl">Buy resources with</span>
+          <span class="lbl" id="buyModeLbl">How you buy materials</span>
           <div class="seg" data-key="buyMode" role="group" aria-labelledby="buyModeLbl">
-            <button type="button" data-v="instant">Instant buy</button><button type="button" data-v="order">Buy orders</button>
+            <button type="button" data-v="instant">Buy now (instant)</button><button type="button" data-v="order">Buy order (wait, cheaper)</button>
           </div>
         </div>
         <div class="field">
-          <span class="lbl" id="sellBasisLbl">Sell with</span>
+          <span class="lbl" id="sellBasisLbl">How you sell</span>
           <div class="seg" data-key="sellBasis" role="group" aria-labelledby="sellBasisLbl">
-            <button type="button" data-v="listing">Sell order</button><button type="button" data-v="buyorder">Instant sell</button><button type="button" data-v="average">7-day average</button>
+            <button type="button" data-v="listing">Sell order (wait)</button><button type="button" data-v="buyorder">Sell now (instant)</button><button type="button" data-v="average">7-day average</button>
           </div>
         </div>
         <div class="field">
@@ -120,7 +121,7 @@
         <input type="search" id="q" placeholder="Find an item: claymore, bag, robe…" aria-label="Find an item" autocomplete="off">
         <div class="ctl" style="justify-content:space-between;flex-wrap:wrap;gap:8px">
           <div class="seg" data-key="show" role="group" aria-label="Show">
-            <button type="button" data-v="all">All</button><button type="button" data-v="profit">Profit</button><button type="button" data-v="focus">Focus only</button>
+            <button type="button" data-v="all">All</button><button type="button" data-v="profit">Profitable</button><button type="button" data-v="focus">Only with focus</button>
           </div>
           <select id="sort" aria-label="Sort by">
             <option value="profit">Most profit</option>

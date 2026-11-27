@@ -29,8 +29,10 @@ and how many sell a day. Each item is crafted in its bonus city unless you pick 
 - **Your trip** as numbered stops: what to buy (or which buy orders to place) in each city, where to craft, where to sell,
   empty and full journals, what you spend and get, and how much buying on the way earns compared with buying everything
   in the craft city. Below it, the same trip with fewer or more stops.
-- **Where to buy and sell**: every city's price for each resource and for the item. The cheapest is green; click any
-  price to buy or sell there instead, and the trip and profit update. Type a price in *Your price* for resources you
+- **Prices in every city**: for each material, its **Buy now** price (cheapest seller) and **Buy order** price
+  (highest bid); for the item, its **Sell order**, **Sell now** and 7-day **Sold for** prices. Green is the best in
+  each row and ✓ marks the kind of price being used. Click any price to buy or sell there; the trip and profit update.
+  *What do these prices mean?* under the table explains each term. Type a price in *your own price* for materials you
   gathered yourself.
 - **Your levels**: mastery and specialization levels for focus cost, or the focus cost the game shows, to match it exactly.
   **Quick fill** sets a whole mastery (or every mastery in a group, such as all Weapons) to one level in one click.
@@ -40,6 +42,14 @@ station fee, your focus, the maximum price age and Premium. Everything is saved 
 
 **Prices not loading?** at the bottom gives the direct API links and a box to paste their output, in case your network
 blocks the API.
+
+## Your levels
+
+**Your levels** (`profile.html`) lists every crafting and refining mastery with all its specializations on one page,
+grouped like the game (Weapons, Armor, Off-hands, Bags & Capes, Gathering, Potions & Food, Refining, Mounts & Furniture).
+Under each box it shows how much less focus that item costs with your levels. Quick fill sets one mastery, a whole
+group or everything at once, and the search box finds a mastery or item by name. The first time someone opens the
+site, it starts here with a short welcome; after that it opens on the crafting page.
 
 ## Saved in your browser
 
@@ -106,6 +116,7 @@ Then open http://localhost:8080.
 ```
 index.html            crafting page
 refining.html         refining page
+profile.html          your levels: every mastery and specialization
 css/v2.css            styles for both pages
 js/calc.js            all the crafting math (return rates, focus, taxes, journals, routes), no browser code
 js/market.js          Albion Online Data Project client, cache, paste fallback
@@ -113,6 +124,7 @@ js/app.js             crafting page interface
 js/refining.js        refining page interface
 js/profile.js         characters saved in the browser
 js/levels.js          quick fill for Destiny Board levels
+js/profile-page.js    your levels page
 data/items.json       recipes, names and city bonuses, generated
 tools/build-data.mjs  rebuilds data/items.json from the game's data files
 tools/test-calc.mjs   tests for the math
