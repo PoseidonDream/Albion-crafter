@@ -1,5 +1,8 @@
 # Albion Crafting Profits
 
+**▶ Open the site: [poseidondream.github.io/Albion-crafter](https://poseidondream.github.io/Albion-crafter/)**
+· [Refining planner](https://poseidondream.github.io/Albion-crafter/refining.html)
+
 A crafting profit calculator for Albion Online that covers everything you can craft or refine:
 weapons, armor, off-hands, bags, capes, tools, gatherer gear, potions, food, cooking ingredients,
 butchering, refining, mounts and furniture. Every tier (T1–T8) and enchantment (.0–.4) is included,
@@ -18,7 +21,7 @@ The site is plain HTML, CSS and JavaScript with no build step, so GitHub Pages c
 1. In this repository on GitHub, go to **Settings → Pages**.
 2. Under **Build and deployment**, set **Source** to **Deploy from a branch**.
 3. Pick the branch that holds this code and the **/ (root)** folder, then **Save**.
-4. After a minute the site is live at `https://<your-user>.github.io/Albion-crafter/`.
+4. After a minute the site is live at https://poseidondream.github.io/Albion-crafter/.
 
 To run it on your own computer instead, serve the folder (opening `index.html` directly won't load the data):
 
