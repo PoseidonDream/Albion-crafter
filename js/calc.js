@@ -292,3 +292,47 @@ export function batch(e, s, N, useFocus) {
 
 // How many crafts your focus covers.
 export const focusCrafts = (e, s) => (e.fc ? Math.floor(Math.max(0, +s.focus || 0) / e.fc) : 0);
+
+/* ---------- buying everything in one city ---------- */
+
+// What a batch's materials cost if every one is bought in the same market. `rows` are batch rows
+// ({ id, buy, unit }). Materials you priced yourself or that aren't traded keep their cost.
+// Returns one entry per market: { city, cost, missing: [ids] }, cheapest complete city first.
+export function cityTotals(rows, s, m, now = Date.now()) {
+  return MARKETS.map(city => {
+    let cost = 0;
+    const missing = [];
+    for (const r of rows) {
+      const u = resourceUnit(m, r.id, city, s, now);
+      if (!u) { missing.push(r.id); continue; }
+      cost += r.buy * u.u;
+    }
+    return { city, cost, missing };
+  }).sort((a, b) => a.missing.length - b.missing.length || a.cost - b.cost);
+}
+
+/* ---------- carrying it ---------- */
+
+// Weight in kg of `count` of an item (enchanted ids weigh the same as their base item).
+export const weightOf = (data, id) => (data.weights || {})[String(id).replace(/@\d$/, '')] || 0;
+export const loadKg = (data, list) => list.reduce((a, [id, count]) => a + weightOf(data, id) * count, 0);
+
+// Transport mounts for a load: price is the cheapest "buy now" in any market (a buy order if no
+// one is selling). Each gets silver per kg it carries and the trips it needs for `kg`.
+// Returns { list (cheapest per kg first), fits (cheapest that takes it in one trip), value (best silver per kg) }.
+export function mountOptions(data, m, s, kg, now = Date.now()) {
+  const list = (data.mounts || []).map(x => {
+    let best = null;
+    for (const c of MARKETS) {
+      const p = marketPrice(m, x.id, c, 'listing', s, now) || marketPrice(m, x.id, c, 'buyorder', s, now);
+      if (p && (!best || p.p < best.price)) best = { price: p.p, city: c };
+    }
+    return { ...x, price: best ? best.price : null, city: best ? best.city : null,
+      perKg: best ? best.price / x.kg : null, trips: kg > 0 ? Math.ceil(kg / x.kg - 1e-9) : 0 };
+  });
+  const priced = list.filter(x => x.price != null);
+  const fits = priced.filter(x => x.kg >= kg).sort((a, b) => a.price - b.price)[0] || null;
+  const value = priced.slice().sort((a, b) => a.perKg - b.perKg)[0] || null;
+  list.sort((a, b) => (a.perKg == null) - (b.perKg == null) || a.perKg - b.perKg || a.kg - b.kg);
+  return { list, fits, value };
+}

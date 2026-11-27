@@ -1,8 +1,9 @@
 // Crafting page: rank crafts for the trip you're willing to make (left), work out one item in detail (right).
-import * as C from './calc.js';
+import * as C from './calc.js?v=4'; // ?v: a cached older copy can't be mixed in
 import * as M from './market.js';
 import * as P from './profile.js';
 import * as L from './levels.js';
+import * as H from './haul.js?v=4';
 
 /* ---------- helpers ---------- */
 const $ = id => document.getElementById(id);
@@ -40,7 +41,7 @@ const PAGE = 60;
 let D = null, S = null, MK = null, loading = null;
 let ranked = [], shown = PAGE;
 const byId = new Map(), byBase = new Map(), catName = {};
-let bench = { id: null, picks: {}, sellPin: null };
+let bench = { id: null, picks: {}, sellPin: null, haulKg: null };
 let autoSel = false;
 let fillValue = 100; // last quick-fill level // true while the selection is ours, not the user's: it follows the top of the list
 
@@ -243,9 +244,10 @@ function idsFor(items) {
   const price = new Set(), hist = new Set();
   for (const it of items) {
     price.add(it.id); hist.add(it.id);
-    for (const [id] of it.r) price.add(id);
+    for (const [id] of it.r) { price.add(id); hist.add(id); }
     if (it.j) { price.add(it.j[0] + '_EMPTY'); price.add(it.j[0] + '_FULL'); }
   }
+  if (items.length) for (const x of D.mounts || []) price.add(x.id); // for the mount picker
   return { priceIds: [...price], histIds: [...hist] };
 }
 
@@ -344,7 +346,7 @@ function renderList() {
 function select(id) {
   if (!byId.has(id)) return;
   autoSel = false;
-  if (bench.id !== id) bench = { id, picks: {}, sellPin: null };
+  if (bench.id !== id) bench = { id, picks: {}, sellPin: null, haulKg: null };
   S.sel = id; save();
   renderList(); renderBench();
   const it = byId.get(id), need = idsFor(byBase.get(it.base) || [it]);
@@ -358,7 +360,7 @@ const journalName = id => nm(id + '_EMPTY').replace(/ \(Empty\)$/, '');
 function renderBench() {
   const it = byId.get(S.sel);
   if (!it) { $('bench').innerHTML = '<p class="empty">Pick an item on the left.</p>'; return; }
-  if (bench.id !== it.id) bench = { id: it.id, picks: {}, sellPin: null };
+  if (bench.id !== it.id) bench = { id: it.id, picks: {}, sellPin: null, haulKg: null };
   const e = trip(it, +S.extra, bench.picks, bench.sellPin), b = e.b, s = e.ss;
   const N = Math.max(1, +S.crafts || 1);
   const craftAt = e.craftCity === 'custom' ? 'your hideout' : e.craftCity, home = homeOf(e);
@@ -433,24 +435,43 @@ function renderBench() {
       ? `<button type="button" class="pcb${v.x.p === best ? ' best' : ''}" ${opts.attr(v.c)} data-mode="${kind}" aria-pressed="${!!opts.used && v.c === opts.chosen}" title="${esc(v.c)}${ageOf(v.x.at)}" aria-label="${label} in ${esc(v.c)}: ${fmt(v.x.p)}">${fmt(v.x.p)}</button>`
       : '<span class="pcb empty" aria-hidden="true">—</span>').join('');
   };
+  // Sold per day in each city (7-day average), from the sales history
+  const volRow = (id, sell) => {
+    const vals = C.SELL_MARKETS.map(c => (sell || c !== 'Black Market' ? ((MK.hist[id] || {})[c] || null) : null));
+    const top = Math.max(0, ...vals.map(h => (h ? h.n : 0)));
+    return `<span class="rl" title="How many sold a day on average over the last 7 days">Sold / day</span>` +
+      vals.map((h, i) => h ? `<span class="pcb vol${h.n === top && top > 0 ? ' best' : ''}" title="${esc(C.SELL_MARKETS[i])}: ${fmt1(h.n)} sold a day${h.avg ? ' at about ' + fmt(h.avg) : ''}">${fmt1(h.n)}</span>`
+        : '<span class="pcb vol empty" aria-hidden="true">—</span>').join('');
+  };
   const matRows = it.r.map(([id, qty, noReturn], i) => {
     const chosen = e.rows[i].unit && e.rows[i].unit.city;
     const o = { id, chosen, attr: c => `data-pick="${esc(id)}" data-city="${esc(c)}"` };
-    return `<div class="nm" style="grid-row:span 2"><b>${esc(nm(id))}${/@\d$/.test(id) ? ' <span class="tier">.' + id.slice(-1) + '</span>' : ''}</b>
+    return `<div class="nm" style="grid-row:span 3"><b>${esc(nm(id))}${/@\d$/.test(id) ? ' <span class="tier">.' + id.slice(-1) + '</span>' : ''}</b>
         <small>${qty} per craft · you need ${fmt(b.rows[i].buy)}${noReturn ? ' · never returned' : ''}</small>
         <input type="number" min="0" step="1" inputmode="numeric" data-ov="${esc(id)}" value="${S.overrides[id] || ''}" placeholder="your own price" aria-label="Your own price for ${esc(nm(id))}"></div>` +
       priceRow('listing', 'Buy now', C.SELL_MARKETS, { ...o, used: usingBuy === 'listing', help: 'Cheapest seller: you get it instantly' }) +
-      priceRow('buyorder', 'Buy order', C.SELL_MARKETS, { ...o, used: usingBuy === 'buyorder', help: 'Highest buy order: post yours at this price and wait' });
+      priceRow('buyorder', 'Buy order', C.SELL_MARKETS, { ...o, used: usingBuy === 'buyorder', help: 'Highest buy order: post yours at this price and wait' }) +
+      volRow(id, false);
   }).join('<span class="sep thin"></span>');
   const saleKind = e.sale ? (e.sale.basis === 'manual' ? null : e.sale.basis) : null;
   const so = { id: it.id, sell: true, chosen: e.sale && e.sale.city, attr: c => `data-sellpin="${esc(c)}"` };
-  const sellRows = `<div class="nm" style="grid-row:span 3"><b>Sell ${esc(it.name)}</b><small>${fmt(b.items)} to sell</small>
+  const sellRows = `<div class="nm" style="grid-row:span 4"><b>Sell ${esc(it.name)}</b><small>${fmt(b.items)} to sell</small>
       <input type="number" min="0" step="1" inputmode="numeric" data-ov="${esc(it.id)}" value="${S.overrides[it.id] || ''}" placeholder="your own price" aria-label="Your own sell price"></div>` +
     priceRow('listing', 'Sell order', C.SELL_MARKETS, { ...so, used: saleKind === 'listing', help: 'List at the cheapest current price and wait for a buyer' }) +
     priceRow('buyorder', 'Sell now', C.SELL_MARKETS, { ...so, used: saleKind === 'buyorder', help: 'Sell instantly to the highest buy order' }) +
-    priceRow('average', 'Sold for', C.SELL_MARKETS, { ...so, used: saleKind === 'average', help: 'Average price it actually sold for over 7 days' });
+    priceRow('average', 'Sold for', C.SELL_MARKETS, { ...so, used: saleKind === 'average', help: 'Average price it actually sold for over 7 days' }) +
+    volRow(it.id, true);
   const hist = (MK.hist[it.id] || {})[sellCity];
   const modeSeg = (key, opts) => `<div class="seg" role="group">${opts.map(([v, t]) => `<button type="button" data-benchset="${key}" data-v="${v}" aria-pressed="${S[key] === v}">${t}</button>`).join('')}</div>`;
+
+  // Buying everything in one city, and carrying it
+  const buyCitySet = new Set(b.rows.filter(r => r.unit && C.MARKETS.includes(r.unit.city)).map(r => r.unit.city));
+  const oneCity = H.oneCityTable({ rows: b.rows, s, m: MK, home: e.craftCity === 'custom' ? craftAt : e.craftCity,
+    profit: e.priced ? b.profit : null, mat: b.mat, chosen: buyCitySet.size === 1 ? [...buyCitySet][0] : null, name: nm });
+  const matKg = C.loadKg(D, b.rows.map(r => [r.id, r.buy]));
+  const farKg = C.loadKg(D, b.rows.filter(r => r.unit && C.MARKETS.includes(r.unit.city) && r.unit.city !== e.craftCity).map(r => [r.id, r.buy]));
+  const haul = H.mountSection({ data: D, m: MK, s, kg: matKg, far: farKg, home: craftAt, kgOverride: bench.haulKg,
+    products: { kg: C.weightOf(D, it.id) * b.items, to: sellCity !== e.craftCity ? sellCity : null } });
 
   // One plain sentence for the whole plan
   const buyCities = [...new Set(e.rows.filter(r => r.unit && C.MARKETS.includes(r.unit.city)).map(r => r.unit.city))];
@@ -467,7 +488,7 @@ function renderBench() {
   // Keep the cursor in the input being typed in across the re-render
   const act = document.activeElement;
   const keep = act && act.closest && act.closest('#bench') && act.matches('input')
-    ? (act.dataset.ov != null ? `[data-ov="${act.dataset.ov}"]` : act.dataset.lv != null ? `[data-lv="${act.dataset.lv}"]` : act.dataset.cal != null ? '[data-cal]' : null) : null;
+    ? (act.dataset.ov != null ? `[data-ov="${act.dataset.ov}"]` : act.dataset.lv != null ? `[data-lv="${act.dataset.lv}"]` : act.dataset.cal != null ? '[data-cal]' : act.dataset.haulkg != null ? '[data-haulkg]' : null) : null;
   const levelsOpen = $('bench').querySelector('details.levels') ? $('bench').querySelector('details.levels').open : (lv.m || Object.keys(lv.s || {}).length || S.fce[calKey] != null);
 
   $('bench').innerHTML = `
@@ -500,6 +521,16 @@ function renderBench() {
     </section>
 
     <section class="sec">
+      <div class="sec-head"><h3>Buy everything in one city</h3><span class="note">All materials for ${fmt(N)} crafts from one market, then carry them to ${esc(craftAt)}. Click a city to plan with it.</span></div>
+      ${oneCity}
+    </section>
+
+    <section class="sec">
+      <div class="sec-head"><h3>Carry it: which mount</h3><span class="note">Mount prices are the cheapest in any city.</span></div>
+      ${haul}
+    </section>
+
+    <section class="sec">
       <div class="sec-head"><h3>Prices in every city</h3>
         <span class="ctl">${anyPick ? '<button type="button" class="btn quiet" data-reset>Back to the best route</button>' : ''}<span class="note">Green is the best price in each row. Click a price to buy or sell there.</span></span></div>
       <div class="ctl" style="flex-wrap:wrap;gap:8px 18px">
@@ -514,6 +545,7 @@ function renderBench() {
           <dt>Sell order</dt><dd>List your items at about the cheapest current price and wait for buyers. 2.5% fee plus tax.</dd>
           <dt>Sell now</dt><dd>Sell instantly to the highest buy order. Tax only, usually less money.</dd>
           <dt>Sold for</dt><dd>What it actually sold for on average over the last 7 days.</dd>
+          <dt>Sold / day</dt><dd>How many sold a day in that city, on average over the last 7 days. Selling more than this takes longer; for materials it shows where they're traded most.</dd>
           <dt>✓</dt><dd>The kind of price the calculator is using. Switch it with the buttons above the table.</dd>
         </dl>
       </details>
@@ -554,6 +586,9 @@ function onBenchClick(ev) {
   const bs = t.closest('[data-benchset]');
   if (bs) { setMode(bs.dataset.benchset, bs.dataset.v); return; }
   if (t.closest('[data-reset]')) { bench.picks = {}; bench.sellPin = null; renderBench(); return; }
+  const one = t.closest('[data-onecity]');
+  if (one) { const it = byId.get(S.sel); bench.picks = Object.fromEntries(it.r.map(([id]) => [id, one.dataset.onecity])); renderBench(); return; }
+  if (t.closest('[data-haulreset]')) { bench.haulKg = null; renderBench(); return; }
   const ex = t.closest('[data-extra]');
   if (ex) { S.extra = +ex.dataset.extra; bench.picks = {}; save(); writeSegs(); recompute(); return; }
   const fill = t.closest('[data-fill]');
@@ -581,6 +616,7 @@ function quickFill(kind) {
 function onBenchInput(ev) {
   const el = ev.target, it = byId.get(S.sel);
   if (!it || !el.matches('input')) return;
+  if (el.dataset.haulkg != null) { const v = +el.value; bench.haulKg = v > 0 ? v : null; renderBench(); return; }
   if (el.dataset.ov != null) {
     const v = +el.value;
     if (v > 0) S.overrides[el.dataset.ov] = v; else delete S.overrides[el.dataset.ov];
