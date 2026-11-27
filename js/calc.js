@@ -73,7 +73,11 @@ export function fceFor(item, s, data) {
   const specs = lv.s || {};
   const total = Object.values(specs).reduce((a, v) => a + lvl(v), 0);
   const mutual = (data.lines[item.l] || {}).mutual || 0;
-  return FCE_MASTERY * lvl(lv.m) + FCE_SPEC * lvl(specs[item.s]) + mutual * total;
+  const line = data.lines[item.l] || {};
+  if (line.noLevels) return 0;
+  // Refining has no mastery level on the Destiny Board, only its T4 to T8 nodes
+  const mastery = line.mastery === false ? 0 : FCE_MASTERY * lvl(lv.m);
+  return mastery + (item.s ? FCE_SPEC * lvl(specs[item.s]) : 0) + mutual * total;
 }
 
 export function focusCost(item, s, data) {

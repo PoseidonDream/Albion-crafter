@@ -520,7 +520,7 @@ function renderBench() {
       <p class="note">${hist && hist.avg ? `About ${fmt1(hist.n)} sell a day in ${esc(sellCity)}. ` : ''}${e.fee ? `Station fee ${fmt(e.fee)} per craft. ` : ''}Tax ${S.premium ? '4% with Premium' : '8% without Premium'}.</p>
     </section>
 
-    ${it.f ? `<details class="sec levels"${levelsOpen ? ' open' : ''}>
+    ${it.f && !line.noLevels ? `<details class="sec levels"${levelsOpen ? ' open' : ''}>
       <summary style="cursor:pointer;min-height:40px;display:flex;align-items:center;gap:10px;flex-wrap:wrap"><h3>Your levels: ${esc(line.name)}</h3><span class="note">${fmt(e.fc)} focus per craft, base ${fmt(it.f)}</span></summary>
       <div class="specs" style="margin-top:10px;padding:10px 12px;background:var(--panel2);border-radius:8px">
         <span class="lbl">Quick fill</span>
@@ -530,7 +530,7 @@ function renderBench() {
         <button type="button" class="btn quiet" data-fill="clear">Clear ${esc(line.name)}</button>
       </div>
       <div class="specs" style="margin-top:10px">
-        <label>Mastery <input type="number" min="0" max="100" data-lv="m" value="${lv.m || ''}" placeholder="0"></label>
+        ${line.mastery === false ? '' : `<label>Mastery <input type="number" min="0" max="100" data-lv="m" value="${lv.m || ''}" placeholder="0"></label>`}
         ${specs.map(sp => `<label${sp.spec === it.s ? ' style="color:var(--accent);font-weight:600"' : ''}>${esc(sp.name)} <input type="number" min="0" max="100" data-lv="${esc(sp.spec)}" value="${(lv.s || {})[sp.spec] || ''}" placeholder="0"></label>`).join('')}
       </div>
       <div class="specs" style="margin-top:8px"><label>Focus per craft shown in game <input type="number" min="1" data-cal value="${S.fce[calKey] != null ? e.fc : ''}" placeholder="${e.fc}"></label>
