@@ -2,6 +2,7 @@
 import * as C from './calc.js';
 import * as M from './market.js';
 import * as P from './profile.js';
+import * as L from './levels.js';
 
 /* ---------- helpers ---------- */
 const $ = id => document.getElementById(id);
@@ -34,6 +35,7 @@ const read = k => { try { return JSON.parse(localStorage.getItem(k) || '{}') || 
 const write = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch { /* ignore */ } };
 
 let D = null, shared = null, own = null, MK = null, loading = null;
+let fillValue = 100; // last quick-fill level
 let items = [];
 const byId = new Map();
 const resCity = {};
@@ -135,6 +137,8 @@ function wire() {
   document.addEventListener('click', e => {
     const segBtn = e.target.closest('.seg[data-key] button[data-v]');
     if (segBtn) { own[segBtn.parentElement.dataset.key] = segBtn.dataset.v; saveOwn(); render(); return; }
+    const fill = e.target.closest('[data-fill]');
+    if (fill) { quickFill(fill.dataset.fill); return; }
     const tab = e.target.closest('[data-res]');
     if (tab) { own.res = tab.dataset.res; own.sel = null; saveOwn(); render(); return; }
     const pick = e.target.closest('[data-pick]');
@@ -154,6 +158,22 @@ function wire() {
   $('premium').addEventListener('change', e => { shared.premium = e.target.checked; saveShared(); render(); });
   $('detail').addEventListener('input', debounce(onDetailInput, 500));
   $('detail').addEventListener('change', onDetailInput);
+}
+
+function quickFill(kind) {
+  const it = byId.get(own.sel);
+  if (!it) return;
+  const box = $('detail').querySelector('[data-fillval]');
+  fillValue = Math.min(100, Math.max(0, Math.floor(+(box && box.value) || 0)));
+  if (kind === 'clear') L.clearLines(shared, [it.l]);
+  else if (kind === 'line') L.fillLines(shared, D, [it.l], fillValue);
+  else {
+    const lines = L.linesInGroup(D, L.groupOf(D, it.c));
+    if (!confirm(`Set the mastery and every tier for all ${lines.length} refining resources to ${fillValue}?`)) return;
+    L.fillLines(shared, D, lines, fillValue);
+  }
+  saveShared();
+  render();
 }
 
 function onDetailInput(ev) {
@@ -362,7 +382,14 @@ function renderDetail(it, s) {
       </div>
     </div>
 
-    ${it.f ? `<div class="specs" aria-label="Refining levels">
+    ${it.f ? `<div class="specs" style="padding:10px 12px;background:var(--panel2);border-radius:8px">
+      <span class="lbl">Quick fill</span>
+      <label>Level <input type="number" min="0" max="100" data-fillval value="${fillValue}" aria-label="Level to fill"></label>
+      <button type="button" class="btn" data-fill="line">All ${esc(D.lines[it.l].name)} tiers</button>
+      <button type="button" class="btn quiet" data-fill="group">All five resources</button>
+      <button type="button" class="btn quiet" data-fill="clear">Clear ${esc(D.lines[it.l].name)}</button>
+    </div>
+    <div class="specs" aria-label="Refining levels">
       <span class="muted">${esc(D.lines[it.l].name)} levels</span>
       <label>Mastery <input type="number" min="0" max="100" data-lv="m" value="${lv.m || ''}" placeholder="0"></label>
       ${tiers.map(t => `<label${t === it.s ? ' style="color:var(--accent)"' : ''}>${t} <input type="number" min="0" max="100" data-lv="${t}" value="${(lv.s || {})[t] || ''}" placeholder="0"></label>`).join('')}

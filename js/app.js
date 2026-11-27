@@ -2,6 +2,7 @@
 import * as C from './calc.js';
 import * as M from './market.js';
 import * as P from './profile.js';
+import * as L from './levels.js';
 
 /* ---------- helpers ---------- */
 const $ = id => document.getElementById(id);
@@ -39,7 +40,8 @@ let D = null, S = null, MK = null, loading = null;
 let ranked = [], shown = PAGE;
 const byId = new Map(), byBase = new Map(), catName = {};
 let bench = { id: null, picks: {}, sellPin: null };
-let autoSel = false; // true while the selection is ours, not the user's: it follows the top of the list
+let autoSel = false;
+let fillValue = 100; // last quick-fill level // true while the selection is ours, not the user's: it follows the top of the list
 
 function loadSettings() {
   let saved = {};
@@ -432,6 +434,7 @@ function renderBench() {
 
   // Levels
   const lv = S.levels[it.l] || {}, line = D.lines[it.l] || { name: it.l }, calKey = it.l + '|' + it.s;
+  const group = L.groupOf(D, it.c);
   const specs = Object.keys(D.specs).filter(k => k.startsWith(it.l + '|')).map(k => ({ spec: k.split('|')[1], name: D.specs[k] }))
     .sort((a, c) => (c.spec === it.s) - (a.spec === it.s) || a.name.localeCompare(c.name));
 
@@ -478,6 +481,13 @@ function renderBench() {
 
     ${it.f ? `<details class="sec levels"${levelsOpen ? ' open' : ''}>
       <summary style="cursor:pointer;min-height:40px;display:flex;align-items:center;gap:10px;flex-wrap:wrap"><h3>Your levels: ${esc(line.name)}</h3><span class="note">${fmt(e.fc)} focus per craft, base ${fmt(it.f)}</span></summary>
+      <div class="specs" style="margin-top:10px;padding:10px 12px;background:var(--panel2);border-radius:8px">
+        <span class="lbl">Quick fill</span>
+        <label>Level <input type="number" min="0" max="100" data-fillval value="${fillValue}" aria-label="Level to fill"></label>
+        <button type="button" class="btn" data-fill="line">All of ${esc(line.name)}</button>
+        ${group ? `<button type="button" class="btn quiet" data-fill="group">Every ${esc(group.name)} mastery</button>` : ''}
+        <button type="button" class="btn quiet" data-fill="clear">Clear ${esc(line.name)}</button>
+      </div>
       <div class="specs" style="margin-top:10px">
         <label>Mastery <input type="number" min="0" max="100" data-lv="m" value="${lv.m || ''}" placeholder="0"></label>
         ${specs.map(sp => `<label${sp.spec === it.s ? ' style="color:var(--accent);font-weight:600"' : ''}>${esc(sp.name)} <input type="number" min="0" max="100" data-lv="${esc(sp.spec)}" value="${(lv.s || {})[sp.spec] || ''}" placeholder="0"></label>`).join('')}
@@ -496,7 +506,27 @@ function onBenchClick(ev) {
   if (pin) { bench.sellPin = pin.dataset.sellpin; renderBench(); return; }
   if (t.closest('[data-reset]')) { bench.picks = {}; bench.sellPin = null; renderBench(); return; }
   const ex = t.closest('[data-extra]');
-  if (ex) { S.extra = +ex.dataset.extra; bench.picks = {}; save(); writeSegs(); recompute(); }
+  if (ex) { S.extra = +ex.dataset.extra; bench.picks = {}; save(); writeSegs(); recompute(); return; }
+  const fill = t.closest('[data-fill]');
+  if (fill) quickFill(fill.dataset.fill);
+}
+
+function quickFill(kind) {
+  const it = byId.get(S.sel);
+  if (!it) return;
+  const box = $('bench').querySelector('[data-fillval]');
+  fillValue = Math.min(100, Math.max(0, Math.floor(+(box && box.value) || 0)));
+  if (kind === 'clear') L.clearLines(S, [it.l]);
+  else if (kind === 'line') L.fillLines(S, D, [it.l], fillValue);
+  else {
+    const group = L.groupOf(D, it.c);
+    if (!group) return;
+    const lines = L.linesInGroup(D, group);
+    if (!confirm(`Set every mastery and specialization in ${group.name} (${lines.length} masteries) to ${fillValue}?`)) return;
+    L.fillLines(S, D, lines, fillValue);
+  }
+  save();
+  recompute();
 }
 
 function onBenchInput(ev) {
