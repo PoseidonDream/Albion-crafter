@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Refining · Albion Crafter</title>
+<meta name="description" content="Albion Online refining profit for every resource, tier and enchantment, with and without focus, using live market prices.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23f2b33d'/%3E%3Cpath d='M9 23l9-9m-4-4l8 8m-12 5l-2 2m14-14l3-3' stroke='%2314161a' stroke-width='2.6' stroke-linecap='round'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/v2.css">
+</head>
+<body>
+<header class="bar">
+  <div class="bar-in">
+    <div class="brand">
+      <a class="logo" href="index.html">ALBION CRAFTER</a>
+      <nav class="nav" aria-label="Pages">
+        <a href="index.html">Crafting</a>
+        <a href="refining.html" aria-current="page">Refining</a>
+      </nav>
+    </div>
+    <div class="bar-right">
+      <select id="server" aria-label="Game server"></select>
+      <div class="progress" id="progress" hidden><span id="progressBar"></span></div>
+      <span class="status" id="status" role="status" aria-live="polite">Loading…</span>
+      <button type="button" class="btn" id="refresh">Refresh</button>
+    </div>
+  </div>
+</header>
+
+<div class="wrap">
+  <div class="tabs" id="tabs" role="tablist" aria-label="Resource"></div>
+
+  <section class="panel controls" aria-label="Settings">
+    <div class="ctl"><span>Buy with</span><div class="seg" data-key="buyMode">
+      <button type="button" data-v="order">Buy orders</button><button type="button" data-v="instant">Instant buy</button></div></div>
+    <div class="ctl"><span>Buy in</span><div class="seg" data-key="buyWhere">
+      <button type="button" data-v="craft">Refining city</button><button type="button" data-v="cheapest">Cheapest city</button></div></div>
+    <div class="ctl"><span>Sell with</span><div class="seg" data-key="sellBasis">
+      <button type="button" data-v="listing">Sell order</button><button type="button" data-v="buyorder">Instant sell</button></div></div>
+    <div class="ctl"><span>Sell in</span><div class="seg" data-key="sellWhere">
+      <button type="button" data-v="craft">Refining city</button><button type="button" data-v="best">Best city</button></div></div>
+    <div class="ctl"><span id="dailyLbl">Daily bonus today</span><div class="seg" data-key="daily" aria-labelledby="dailyLbl">
+      <button type="button" data-v="0">None</button><button type="button" data-v="10">+10%</button><button type="button" data-v="20">+20%</button></div></div>
+    <label class="ctl"><span>Station fee</span><input type="number" id="fee" min="0" step="50" inputmode="numeric" title="Silver per 100 nutrition, shown on the station"></label>
+    <label class="ctl"><span>Focus</span><input type="number" id="focus" min="0" step="1000" inputmode="numeric"></label>
+    <label class="ctl"><input type="checkbox" id="premium"><span>Premium</span></label>
+  </section>
+
+  <div class="split">
+    <section class="panel card" aria-labelledby="mx-h">
+      <div class="card-head">
+        <h2 id="mx-h"></h2>
+        <div class="ctl"><span>Show</span><div class="seg" data-key="view">
+          <button type="button" data-v="n">Profit, no focus</button><button type="button" data-v="f">Profit, focus</button><button type="button" data-v="spf">Silver / focus</button></div></div>
+      </div>
+      <div class="scroll"><div class="matrix" id="matrix"></div></div>
+      <div class="legend" id="legend"></div>
+    </section>
+
+    <section class="panel card" aria-labelledby="fp-h">
+      <div class="card-head"><h2 id="fp-h">Best use of your focus</h2><span class="muted" id="fpSub"></span></div>
+      <div class="rows" id="focusPlan"></div>
+    </section>
+  </div>
+
+  <section class="panel card" id="detail" aria-labelledby="d-h"></section>
+
+  <p class="note" id="foot"></p>
+</div>
+
+<script type="module" src="js/refining.js"></script>
+</body>
+</html>

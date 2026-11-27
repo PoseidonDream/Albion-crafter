@@ -46,6 +46,26 @@ Then open http://localhost:8080.
 - **Prices not loading?** at the bottom gives the direct API links and a box to paste their output, in case your
   network blocks the API.
 
+## Refining planner
+
+`refining.html` (the **Refining** link at the top) is a page just for refining:
+
+- One tab per resource, each refined in its +40% city (Thetford bars, Fort Sterling planks, Lymhurst cloth,
+  Martlock leather, Bridgewatch stone).
+- A tier × enchantment grid with what to do with each one today: **No focus** (profitable as is),
+  **+10% / +20% day** (only on a daily bonus day, so stockpile it), **Focus** (only with focus) or **Skip**.
+- **Best use of your focus** ranks every refine across all five resources by silver per focus point.
+- For the selected tier: every city's price for the raw resource, the previous tier's refined resource and the product,
+  profit with and without focus and on bonus days, and a batch plan that says which buy orders to place in which city.
+- Defaults follow the usual refining routine: buy with buy orders, station fee 400 per 100 nutrition.
+
+## Laborer journals
+
+Crafting gear fills Blacksmith's, Fletcher's, Imbuer's and Tinker's journals. Each craft adds a fixed amount of fame
+(from the game files; artifact and crystal items fill faster), so the crafting page adds
+share of a journal × (full journal price after tax − empty journal price) to the profit. Turn it off under
+*Count laborer journals*. Refining, potions and food don't fill any journal in the game files, so they get none.
+
 ## How it's worked out
 
 | | |

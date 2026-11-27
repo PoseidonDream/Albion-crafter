@@ -235,7 +235,10 @@ async function fetchPrices(force) {
   const items = viewItems();
   const products = items.map(it => it.id);
   const res = new Set();
-  for (const it of items) for (const [id] of it.r) res.add(id);
+  for (const it of items) {
+    for (const [id] of it.r) res.add(id);
+    if (it.j) { res.add(it.j[0] + '_EMPTY'); res.add(it.j[0] + '_FULL'); }
+  }
   const priceIds = [...products, ...res];
   const server = S.server;
   renderLinks(priceIds, products);
@@ -421,7 +424,7 @@ function openDetail(id) {
   dlg.scrollTop = 0;
   // Make sure we have prices for this item even if it's outside the current view
   if (!MK.pAt[id]) {
-    M.update(S.server, MK, { priceIds: [id, ...it.r.map(r => r[0])], histIds: [id] })
+    M.update(S.server, MK, { priceIds: [id, ...it.r.map(r => r[0]), ...(it.j ? [it.j[0] + '_EMPTY', it.j[0] + '_FULL'] : [])], histIds: [id] })
       .then(() => { M.saveMarket(S.server, MK); recompute(); }).catch(() => {});
   }
 }
@@ -503,6 +506,7 @@ function renderDetailOut() {
     `Return ${pct(e.rN)}${it.f ? ' · with focus ' + pct(e.rF) : ''}`,
     `Buy in ${esc(S.buyCity === 'cheapest' ? 'the cheapest city' : e.buyCity)}`,
     `Sell in ${esc(e.sale ? e.sale.city : e.sellCity)}`,
+    e.journal ? `Fills ${esc(resName(e.journal.id + '_EMPTY').replace(/ \(Empty\)$/, ''))}: ${fmt1(e.journal.perJournal)} crafts each` : '',
     e.amount > 1 ? `${e.amount} items per craft` : '',
     it.v ? `Item value ${fmt(it.v)}` : ''
   ].filter(Boolean).map(t => `<span class="fact">${t}</span>`).join('');
@@ -515,6 +519,7 @@ function renderDetailOut() {
       <div class="kv"><span>Resources after returns</span><span>${fmt(cost - e.fee - e.silver)}</span></div>
       ${e.fee ? `<div class="kv"><span>Station fee</span><span>${fmt(e.fee)}</span></div>` : ''}
       ${e.silver ? `<div class="kv"><span>Silver cost</span><span>${fmt(e.silver)}</span></div>` : ''}
+      ${e.journal ? `<div class="kv"><span>Journal, ${fmt1(e.journal.share * 100)}% of one per craft${S.journals ? '' : ' (off)'}</span><span class="${S.journals && e.journal.value != null ? cls(e.journal.value) : 'dim'}">${e.journal.value != null ? fmtS(e.journal.value) : 'no price'}</span></div>` : ''}
       <div class="kv"><span>You get after tax${(focus ? e.outF : e.outN) !== 1 ? ` (${fmt1(focus ? e.outF : e.outN)} items)` : ''}</span><span>${e.sale ? fmt(rev) : '—'}</span></div>
       <div class="kv big"><span>Profit per craft</span><span class="${cls(e.priced ? pr : null)}">${e.priced ? fmtS(pr) : '—'}</span></div>
       <div class="kv"><span>Margin</span><span>${e.priced ? pct(m) : '—'}</span></div>
@@ -571,6 +576,7 @@ function renderDetailOut() {
   $('d-batch').innerHTML = `
     <div class="batch-tiles">
       <div class="tile"><span class="k">You make</span><span class="v">${fmt(b.items)}</span><span class="s">${fmt(b.N)} craft${b.N === 1 ? '' : 's'}${b.Nf ? ` · ${fmt(b.Nf)} with focus` : ''}</span></div>
+      ${e.journal ? `<div class="tile"><span class="k">Journals filled</span><span class="v">${fmt1(b.journalCount)}</span><span class="s">${S.journals && e.journal.value != null ? fmtS(b.journals) + ' after buying empties' : e.journal.value == null ? 'no journal prices' : 'not counted'}</span></div>` : ''}
       <div class="tile"><span class="k">Total cost</span><span class="v">${fmt(b.cost)}</span><span class="s">${b.extra ? fmt(b.extra) + ' in fees' : 'resources only'}</span></div>
       <div class="tile"><span class="k">You get after tax</span><span class="v">${e.sale ? fmt(b.revenue) : '—'}</span><span class="s">${e.sale ? fmt(e.sale.net) + ' each' : 'no sell price'}</span></div>
       <div class="tile ${e.priced ? (b.profit > 0 ? 'good' : '') : ''}"><span class="k">Profit</span><span class="v ${cls(e.priced ? b.profit : null)}">${e.priced ? fmtS(b.profit) : '—'}</span><span class="s">${b.focusUsed ? fmt(b.focusUsed) + ' focus used' : 'no focus used'}</span></div>

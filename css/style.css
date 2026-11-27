@@ -210,5 +210,4 @@ tr.used td{background:var(--accent-soft)}
 .spec-grid .field.own label{color:var(--accent);font-weight:600}
 .row2{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px;align-items:end}
 .callout{background:var(--accent-soft);border-radius:10px;padding:10px 12px;font-size:.86rem;font-variant-numeric:tabular-nums}
-.batch-tiles{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
-@media (min-width:760px){.batch-tiles{grid-template-columns:repeat(4,minmax(0,1fr))}}
+.batch-tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px}

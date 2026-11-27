@@ -145,6 +145,32 @@ test('batch uses focus first, then normal crafts', () => {
   near(b.revenue, 10 * e.sale.net);
 });
 
+test('journal profit is added per craft', () => {
+  const sword = item('T4_MAIN_SWORD');
+  assert.deepEqual(sword.j, ['T4_JOURNAL_WARRIOR', 1200, 3600]);
+  const m = { prices: {
+    T4_METALBAR: { Lymhurst: { s: 100, sd: at } }, T4_LEATHER: { Lymhurst: { s: 200, sd: at } },
+    T4_MAIN_SWORD: { Lymhurst: { s: 4000, sd: at } },
+    T4_JOURNAL_WARRIOR_EMPTY: { Lymhurst: { s: 1000, sd: at } }, T4_JOURNAL_WARRIOR_FULL: { Lymhurst: { s: 7000, sd: at } }
+  } };
+  const off = C.evaluate(sword, S({ journals: false }), m, data, T);
+  const on = C.evaluate(sword, S(), m, data, T);
+  const per = (7000 * 0.935 - 1000) / 3;
+  near(on.jv, per);
+  near(on.profitN, off.profitN + per);
+  near(on.profitF, off.profitF + per);
+  const b = C.batch(on, S(), 9, false);
+  near(b.journalCount, 3);
+  near(b.profit, b.revenue + 9 * per - b.cost);
+  // No journal prices: no journal profit, the craft is still priced
+  const m2 = { prices: { ...m.prices, T4_JOURNAL_WARRIOR_FULL: undefined } };
+  const e2 = C.evaluate(sword, S(), m2, data, T);
+  assert.equal(e2.jv, 0); assert.equal(e2.priced, true);
+  // Potions and refining fill no journal
+  assert.equal(item('T4_POTION_HEAL').j, undefined);
+  assert.equal(item('T5_METALBAR').j, undefined);
+});
+
 test('every item in the data is well formed', () => {
   assert.ok(data.items.length > 5000);
   for (const it of data.items) {

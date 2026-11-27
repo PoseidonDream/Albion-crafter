@@ -10,6 +10,7 @@
 //   premium, daily (0/10/20), stationFee (silver per 100 nutrition), maxAge (hours, 0 = any)
 //   levels { line: { m: mastery, s: { spec: level } } }, fce { 'line|spec': efficiency }
 //   overrides { marketId: price }                  prices you typed in yourself
+//   journals   true to add laborer journal profit (crafting gear fills Blacksmith, Fletcher, Imbuer, Tinker journals)
 // Market object `m`: { prices: { id: { city: { s, sd, b, bd } } }, hist: { id: { city: { avg, n } } } }
 //   s = lowest sell listing, b = highest buy order, sd/bd = when seen (ms), avg/n = 7-day average and sold per day.
 
@@ -22,7 +23,7 @@ export const FCE_MASTERY = 30, FCE_SPEC = 250;
 
 export const DEFAULTS = {
   craftCity: 'auto', customBonus: 25, buyCity: 'craft', sellCity: 'craft', sellBasis: 'listing', buyMode: 'instant',
-  premium: true, daily: 0, stationFee: 0, maxAge: 48, focus: 10000, levels: {}, fce: {}, overrides: {}
+  premium: true, daily: 0, stationFee: 0, maxAge: 48, focus: 10000, levels: {}, fce: {}, overrides: {}, journals: true
 };
 
 export const returnRate = pb => (pb > -1 ? 1 - 1 / (1 + pb) : 0);
@@ -156,6 +157,20 @@ export function salePrice(m, id, sellCity, s, now = Date.now()) {
   return saleIn(m, id, sellCity, s, now);
 }
 
+/* ---------- laborer journals ---------- */
+
+// Each craft of a listed item adds a fixed amount of fame to the matching journal, so a craft is
+// worth share x (what a full journal sells for after tax - what an empty one costs).
+export function journalValue(item, s, m, buyCity, sellCity, now = Date.now()) {
+  if (!item.j) return null;
+  const [id, fame, max] = item.j;
+  const share = Math.min(1, fame / max);
+  const empty = resourceUnit(m, id + '_EMPTY', buyCity, s, now);
+  const full = salePrice(m, id + '_FULL', sellCity === 'Black Market' ? buyCity : sellCity, s, now);
+  return { id, fame, max, share, perJournal: Math.round(1 / share * 100) / 100, empty, full,
+    value: empty && full ? share * (full.net - empty.u) : null };
+}
+
 /* ---------- one craft ---------- */
 
 export function evaluate(item, s, m, data, now = Date.now()) {
@@ -183,15 +198,17 @@ export function evaluate(item, s, m, data, now = Date.now()) {
   const fee = (item.v || 0) * NUTRITION_PER_VALUE * (+s.stationFee || 0) / 100;
   const extra = fee + (item.$ || 0);
   const fc = focusCost(item, s, data);
-  const profitN = outN * net - costN - extra;
-  const profitF = fc ? outF * net - costF - extra : null;
+  const journal = journalValue(item, s, m, buyCity, sellCity, now);
+  const jv = s.journals && journal && journal.value != null ? journal.value : 0;
+  const profitN = outN * net - costN - extra + jv;
+  const profitF = fc ? outF * net - costF - extra + jv : null;
   const priced = !missing.length && !!sale;
   const hist = ((m.hist || {})[item.id] || {})[sale && SELL_MARKETS.includes(sale.city) ? sale.city : sellCity] || null;
   let status = 'nodata';
   if (priced) status = profitN > 0 ? 'profit' : profitF > 0 ? 'focus' : 'loss';
   return {
     item, craftCity, buyCity, sellCity: sale && SELL_MARKETS.includes(sale.city) ? sale.city : sellCity,
-    ...r, rows, missing, sale, amount, outN, outF, fee, silver: item.$ || 0,
+    ...r, rows, missing, sale, amount, outN, outF, fee, silver: item.$ || 0, journal, jv,
     costN: costN + extra, costF: costF + extra, revenueN: outN * net, revenueF: outF * net,
     profitN, profitF, fc, spf: fc && priced ? profitF / fc : null,
     marginN: costN + extra > 0 ? profitN / (costN + extra) : 0,
@@ -219,8 +236,9 @@ export function batch(e, s, N, useFocus) {
   const extra = N * (e.fee + e.silver);
   const items = Nf * e.outF + Nn * e.outN;
   const net = e.sale ? e.sale.net : 0;
-  const cost = mat + extra, revenue = items * net;
-  return { N, Nf, Nn, rows, mat, extra, cost, items, revenue, profit: revenue - cost, focusUsed: Nf * e.fc,
+  const cost = mat + extra, revenue = items * net, journals = N * (e.jv || 0);
+  return { N, Nf, Nn, rows, mat, extra, cost, items, revenue, journals, journalCount: e.journal ? N * e.journal.share : 0,
+    profit: revenue + journals - cost, focusUsed: Nf * e.fc,
     breakEven: items && e.sale ? cost / items / (net / e.sale.p) : 0 };
 }
 

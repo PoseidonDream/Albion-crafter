@@ -119,6 +119,15 @@ async function main() {
   const en = {};
   for (const x of names) if (x.UniqueName) en[x.UniqueName] = (x.LocalizedNames && x.LocalizedNames['EN-US']) || null;
 
+  // Laborer journals filled by crafting: base item id -> [journal base id, fame per craft, journal capacity].
+  // Each craft of a listed item adds a fixed amount of fame (times the item's journal fame factor).
+  const journalFor = {};
+  for (const j of arr(items.items.journalitem)) {
+    const m = j.famefillingmissions && j.famefillingmissions.craftitemfame;
+    if (!m || !(`${j['@uniquename']}_EMPTY` in en)) continue;
+    for (const v of arr(m.validitem)) journalFor[v['@id']] = [j['@uniquename'], +m['@value'], +j['@maxfame']];
+  }
+
   // Market id for a resource: enchanted resources trade as e.g. T4_METALBAR_LEVEL1@1
   const marketId = (id, lvl) => (lvl > 0 && (`${id}@${lvl}` in en) ? `${id}@${lvl}` : id);
 
@@ -168,6 +177,8 @@ async function main() {
       if (+r['@silver'] > 0) rec.$ = +r['@silver'];
       if (cls.refine) rec.rf = 1;
       if (r['@returnproductnotresource'] === 'true') rec.pr = 1;
+      const jr = journalFor[it['@uniquename']];
+      if (jr) rec.j = [jr[0], Math.round(jr[1] * (+it['@destinyandjournalcraftfamefactor'] || 1)), jr[2]];
       out.push(rec);
       used.add(id);
       const key = line + '|' + cls.spec;
@@ -176,6 +187,7 @@ async function main() {
   }
   out.sort((a, b) => (a.c < b.c ? -1 : a.c > b.c ? 1 : a.s < b.s ? -1 : a.s > b.s ? 1 : a.t - b.t || a.e - b.e));
 
+  for (const x of out) if (x.j) { used.add(x.j[0] + '_EMPTY'); used.add(x.j[0] + '_FULL'); }
   const nameMap = {};
   for (const id of [...used].sort()) nameMap[id.replace(/@\d$/, '')] = en[id] || en[id.replace(/@\d$/, '')] || id;
 
