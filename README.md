@@ -33,6 +33,7 @@ and how many sell a day. Each item is crafted in its bonus city unless you pick 
   price to buy or sell there instead, and the trip and profit update. Type a price in *Your price* for resources you
   gathered yourself.
 - **Your levels**: mastery and specialization levels for focus cost, or the focus cost the game shows, to match it exactly.
+  **Quick fill** sets a whole mastery (or every mastery in a group, such as all Weapons) to one level in one click.
 
 *More settings* has the craft city, buy orders vs instant buy, sell order vs instant sell vs 7-day average, the daily bonus,
 station fee, your focus, the maximum price age and Premium. Everything is saved in your browser.
@@ -111,6 +112,7 @@ js/market.js          Albion Online Data Project client, cache, paste fallback
 js/app.js             crafting page interface
 js/refining.js        refining page interface
 js/profile.js         characters saved in the browser
+js/levels.js          quick fill for Destiny Board levels
 data/items.json       recipes, names and city bonuses, generated
 tools/build-data.mjs  rebuilds data/items.json from the game's data files
 tools/test-calc.mjs   tests for the math

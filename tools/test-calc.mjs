@@ -3,6 +3,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import * as C from '../js/calc.js';
+import * as L from '../js/levels.js';
 
 const data = JSON.parse(readFileSync(new URL('../data/items.json', import.meta.url), 'utf8'));
 const item = id => data.items.find(x => x.id === id);
@@ -194,6 +195,25 @@ test('route plan picks the cheapest cities within the stop limit', () => {
   // Your own price needs no city
   const r3 = C.routePlan(sword, S({ overrides: { T4_LEATHER: 1 } }), data, m, 1, T);
   assert.deepEqual(r3.plan, { T4_METALBAR: 'Thetford' });
+});
+
+test('quick fill sets whole masteries', () => {
+  const s = S({ levels: {}, fce: { 'sword|MAIN_SWORD': 9999 } });
+  L.fillLines(s, data, ['sword'], 100);
+  assert.equal(s.levels.sword.m, 100);
+  assert.equal(Object.keys(s.levels.sword.s).length, L.specsOf(data, 'sword').length);
+  assert.ok(Object.values(s.levels.sword.s).every(v => v === 100));
+  assert.equal(s.fce['sword|MAIN_SWORD'], undefined); // filling replaces an in-game calibration
+  const armor = L.linesInGroup(data, L.groupOf(data, 'plate_armor'));
+  assert.deepEqual(armor.sort(), ['cloth_armor', 'cloth_helmet', 'cloth_shoes', 'leather_armor', 'leather_helmet', 'leather_shoes', 'plate_armor', 'plate_helmet', 'plate_shoes']);
+  L.fillLines(s, data, armor, 250);  // clamps to 100
+  assert.equal(s.levels.plate_helmet.m, 100);
+  // focus cost with every Swords spec at 100: 30*100 + 250*100 + 30*(8 specs * 100)
+  assert.equal(C.fceFor(item('T4_MAIN_SWORD'), s, data), 3000 + 25000 + 30 * 100 * L.specsOf(data, 'sword').length);
+  L.clearLines(s, ['sword']);
+  assert.equal(s.levels.sword, undefined);
+  L.fillLines(s, data, ['plate_armor'], 0);
+  assert.equal(s.levels.plate_armor, undefined);
 });
 
 test('every item in the data is well formed', () => {
