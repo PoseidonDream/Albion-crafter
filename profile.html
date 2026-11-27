@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Your levels · Albion Crafter</title>
+<meta name="description" content="Enter your Albion Online crafting and refining mastery and specialization levels once, so focus costs match your character.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%2313202b'/%3E%3Cpath d='M9 23l9-9m-4-4l8 8m-12 5l-2 2m14-14l3-3' stroke='%237cc4e4' stroke-width='2.6' stroke-linecap='round'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/v2.css">
+</head>
+<body>
+<header class="bar">
+  <div class="bar-in">
+    <div class="brand">
+      <a class="logo" href="index.html">Albion Crafter</a>
+      <nav class="nav" aria-label="Pages">
+        <a href="index.html">Crafting</a>
+        <a href="refining.html">Refining</a>
+        <a href="profile.html" aria-current="page">Your levels</a>
+      </nav>
+    </div>
+    <div class="bar-right">
+      <select id="char" aria-label="Character" title="Your character: levels and focus are saved per character"></select>
+      <span class="saved" id="saved" role="status" aria-live="polite"></span>
+    </div>
+  </div>
+</header>
+
+<div class="wrap">
+  <section class="welcome" id="welcome" hidden aria-labelledby="welcome-h">
+    <h1 id="welcome-h">Welcome! Enter your crafting levels</h1>
+    <p>Your Destiny Board levels decide how much focus each craft costs. Enter them once here and every profit on the site will match your character.
+      They're saved in this browser, so you won't need to enter them again. Playing more than one character? Add each one with the picker at the top right and they keep their own levels.
+      You can skip this and come back any time from <b>Your levels</b> at the top.</p>
+    <div class="ctl" style="flex-wrap:wrap">
+      <a class="btn fill" href="index.html" data-done>Done, show me what to craft</a>
+      <a class="btn quiet" href="index.html" data-done>Skip for now</a>
+    </div>
+  </section>
+
+  <section class="panel controls" aria-label="Your character">
+    <div class="field">
+      <label class="lbl" for="focus">Focus you have</label>
+      <input type="number" id="focus" min="0" step="1000" inputmode="numeric">
+    </div>
+    <label class="check"><input type="checkbox" id="premium"><span>Premium</span></label>
+    <div class="field" style="flex:1 1 240px">
+      <label class="lbl" for="q">Find a mastery or item</label>
+      <input type="search" id="q" placeholder="claymore, bag, potion, planks…" autocomplete="off">
+    </div>
+    <div class="field">
+      <span class="lbl">Fill everything</span>
+      <div class="ctl">
+        <input type="number" id="fillAll" min="0" max="100" value="100" aria-label="Level for everything" style="width:80px">
+        <button type="button" class="btn" id="fillAllBtn">Set every mastery</button>
+        <button type="button" class="btn quiet" id="clearAllBtn">Clear all</button>
+      </div>
+    </div>
+    <p class="note" id="progress" style="flex-basis:100%"></p>
+  </section>
+
+  <div id="groups" class="groups"></div>
+
+  <p class="note">Focus cost = base × 0.5^(efficiency ÷ 10,000). Each mastery level gives 30 efficiency, each level of an item's own specialization 250, and every specialization level in the same mastery adds 30 (18 for potions) to all its items. The percentage under each box is how much less focus that item costs with these levels. If a number doesn't match the game, type the focus cost the game shows for that item on the Crafting page.</p>
+</div>
+
+<script type="module" src="js/profile-page.js"></script>
+</body>
+</html>

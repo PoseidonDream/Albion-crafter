@@ -41,6 +41,14 @@ station fee, your focus, the maximum price age and Premium. Everything is saved 
 **Prices not loading?** at the bottom gives the direct API links and a box to paste their output, in case your network
 blocks the API.
 
+## Your levels
+
+**Your levels** (`profile.html`) lists every crafting and refining mastery with all its specializations on one page,
+grouped like the game (Weapons, Armor, Off-hands, Bags & Capes, Gathering, Potions & Food, Refining, Mounts & Furniture).
+Under each box it shows how much less focus that item costs with your levels. Quick fill sets one mastery, a whole
+group or everything at once, and the search box finds a mastery or item by name. The first time someone opens the
+site, it starts here with a short welcome; after that it opens on the crafting page.
+
 ## Saved in your browser
 
 Everything you enter (levels, focus, settings, your own prices) is saved in your browser as you type, so it's
@@ -106,6 +114,7 @@ Then open http://localhost:8080.
 ```
 index.html            crafting page
 refining.html         refining page
+profile.html          your levels: every mastery and specialization
 css/v2.css            styles for both pages
 js/calc.js            all the crafting math (return rates, focus, taxes, journals, routes), no browser code
 js/market.js          Albion Online Data Project client, cache, paste fallback
@@ -113,6 +122,7 @@ js/app.js             crafting page interface
 js/refining.js        refining page interface
 js/profile.js         characters saved in the browser
 js/levels.js          quick fill for Destiny Board levels
+js/profile-page.js    your levels page
 data/items.json       recipes, names and city bonuses, generated
 tools/build-data.mjs  rebuilds data/items.json from the game's data files
 tools/test-calc.mjs   tests for the math

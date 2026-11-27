@@ -394,6 +394,7 @@ function renderDetail(it, s) {
       <label>Mastery <input type="number" min="0" max="100" data-lv="m" value="${lv.m || ''}" placeholder="0"></label>
       ${tiers.map(t => `<label${t === it.s ? ' style="color:var(--accent)"' : ''}>${t} <input type="number" min="0" max="100" data-lv="${t}" value="${(lv.s || {})[t] || ''}" placeholder="0"></label>`).join('')}
       <label>Focus per ${esc(it.s)} refine in game <input type="number" min="1" data-cal value="${shared.fce[calKey] != null ? e.fc : ''}" placeholder="${e.fc}"></label>
+      <a href="profile.html">All your levels →</a>
     </div>` : ''}`;
   if (keep) { const el = $('detail').querySelector(keep); if (el) el.focus({ preventScroll: true }); }
 }

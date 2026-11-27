@@ -96,7 +96,18 @@ function routeText(e) {
 }
 
 /* ---------- boot ---------- */
+// First visit with no levels anywhere: start on the Your levels page, once.
+function firstVisit() {
+  try {
+    if (localStorage.getItem('aoc.onboarded')) return false;
+    const saved = JSON.parse(localStorage.getItem(STORE) || '{}') || {};
+    if (Object.keys(saved.levels || {}).length || Object.keys(saved.fce || {}).length) { localStorage.setItem('aoc.onboarded', '1'); return false; }
+    return true;
+  } catch { return false; }
+}
+
 async function boot() {
+  if (firstVisit()) { location.replace('profile.html?welcome=1'); return; }
   try {
     const res = await fetch('data/items.json');
     if (!res.ok) throw new Error('HTTP ' + res.status);
@@ -494,6 +505,7 @@ function renderBench() {
       </div>
       <div class="specs" style="margin-top:8px"><label>Focus per craft shown in game <input type="number" min="1" data-cal value="${S.fce[calKey] != null ? e.fc : ''}" placeholder="${e.fc}"></label>
         <span class="note">Type it to match the game exactly for every tier and enchantment of ${esc(D.specs[calKey] || it.name)}.</span></div>
+      <p class="note" style="margin-top:8px"><a href="profile.html">Enter all your levels on one page →</a></p>
     </details>` : ''}`;
   if (keep) { const el = $('bench').querySelector(keep); if (el) el.focus({ preventScroll: true }); }
 }
