@@ -29,8 +29,10 @@ and how many sell a day. Each item is crafted in its bonus city unless you pick 
 - **Your trip** as numbered stops: what to buy (or which buy orders to place) in each city, where to craft, where to sell,
   empty and full journals, what you spend and get, and how much buying on the way earns compared with buying everything
   in the craft city. Below it, the same trip with fewer or more stops.
-- **Where to buy and sell**: every city's price for each resource and for the item. The cheapest is green; click any
-  price to buy or sell there instead, and the trip and profit update. Type a price in *Your price* for resources you
+- **Prices in every city**: for each material, its **Buy now** price (cheapest seller) and **Buy order** price
+  (highest bid); for the item, its **Sell order**, **Sell now** and 7-day **Sold for** prices. Green is the best in
+  each row and ✓ marks the kind of price being used. Click any price to buy or sell there; the trip and profit update.
+  *What do these prices mean?* under the table explains each term. Type a price in *your own price* for materials you
   gathered yourself.
 - **Your levels**: mastery and specialization levels for focus cost, or the focus cost the game shows, to match it exactly.
   **Quick fill** sets a whole mastery (or every mastery in a group, such as all Weapons) to one level in one click.
